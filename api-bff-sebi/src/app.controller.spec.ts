@@ -14,9 +14,15 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+  it('should return service status', () => {
+    expect(appController.getStatus()).toEqual({
+      service: 'api-bff-sebi',
+      status: 'ok',
+      mode: 'mock-ai-responses',
     });
+  });
+
+  it('should return mock ai reply', () => {
+    expect(appController.getMockReply('ventas q4').source).toBe('mock');
   });
 });

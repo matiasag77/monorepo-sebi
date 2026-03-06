@@ -17,9 +17,20 @@ describe('AppController (e2e)', () => {
   });
 
   it('/ (GET)', () => {
+    return request(app.getHttpServer()).get('/').expect(200).expect({
+      service: 'api-bff-sebi',
+      status: 'ok',
+      mode: 'mock-ai-responses',
+    });
+  });
+
+  it('/ai/reply (POST)', () => {
     return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+      .post('/ai/reply')
+      .send({ prompt: 'ventas q4' })
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.source).toBe('mock');
+      });
   });
 });

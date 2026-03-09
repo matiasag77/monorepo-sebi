@@ -147,10 +147,10 @@ export default function HistoryPage() {
     const diffMs = now.getTime() - d.getTime()
     const diffHours = diffMs / (1000 * 60 * 60)
 
-    if (diffHours < 1) return "Just now"
-    if (diffHours < 24) return `${Math.floor(diffHours)}h ago`
-    if (diffHours < 48) return "Yesterday"
-    return d.toLocaleDateString("en-US", {
+    if (diffHours < 1) return "Ahora mismo"
+    if (diffHours < 24) return `hace ${Math.floor(diffHours)}h`
+    if (diffHours < 48) return "Ayer"
+    return d.toLocaleDateString("es-AR", {
       month: "short",
       day: "numeric",
       year: d.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
@@ -163,10 +163,10 @@ export default function HistoryPage() {
       <div className="px-6 pt-6 pb-4">
         <div className="flex items-center gap-3 mb-1">
           <History className="w-6 h-6 text-blue-400" />
-          <h1 className="text-2xl font-bold text-white">Conversation History</h1>
+          <h1 className="text-2xl font-bold text-white">Historial de Conversaciones</h1>
         </div>
         <p className="text-sm text-zinc-400 ml-9">
-          Browse and manage your past conversations
+          Explorá y gestioná tus conversaciones anteriores
         </p>
       </div>
 
@@ -177,7 +177,7 @@ export default function HistoryPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search conversations..."
+            placeholder="Buscar conversaciones..."
             className="pl-10"
           />
         </div>
@@ -201,19 +201,19 @@ export default function HistoryPage() {
               <MessageSquare className="w-8 h-8 text-zinc-600" />
             </div>
             <h3 className="text-lg font-semibold text-white mb-1">
-              {search ? "No results found" : "No conversations yet"}
+              {search ? "Sin resultados" : "Sin conversaciones aún"}
             </h3>
             <p className="text-sm text-zinc-400 max-w-sm">
               {search
-                ? "Try adjusting your search terms"
-                : "Start a new chat to begin your conversation history"}
+                ? "Intentá ajustar los términos de búsqueda"
+                : "Iniciá un nuevo chat para comenzar tu historial de conversaciones"}
             </p>
             {!search && (
               <Button
                 className="mt-4"
                 onClick={() => router.push("/chat")}
               >
-                Start a conversation
+                Iniciar una conversación
               </Button>
             )}
           </div>
@@ -245,14 +245,14 @@ export default function HistoryPage() {
                           }}
                         >
                           <Pencil className="w-4 h-4 mr-2" />
-                          Rename
+                          Renombrar
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-400 hover:!text-red-300"
                           onClick={() => setDeleteId(conv._id)}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
+                          Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -282,7 +282,7 @@ export default function HistoryPage() {
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
                 <span className="text-sm text-zinc-400">
-                  Page {page} of {totalPages}
+                  Página {page} de {totalPages}
                 </span>
                 <Button
                   variant="outline"
@@ -302,14 +302,14 @@ export default function HistoryPage() {
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Conversation</DialogTitle>
+            <DialogTitle>Eliminar Conversación</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this conversation? This action cannot be undone.
+              ¿Estás seguro de que querés eliminar esta conversación? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteId(null)}>
-              Cancel
+              Cancelar
             </Button>
             <Button
               variant="destructive"
@@ -319,10 +319,10 @@ export default function HistoryPage() {
               {isDeleting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Deleting...
+                  Eliminando...
                 </>
               ) : (
-                "Delete"
+                "Eliminar"
               )}
             </Button>
           </DialogFooter>
@@ -333,31 +333,31 @@ export default function HistoryPage() {
       <Dialog open={!!renameId} onOpenChange={() => setRenameId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename Conversation</DialogTitle>
+            <DialogTitle>Renombrar Conversación</DialogTitle>
             <DialogDescription>
-              Enter a new title for this conversation.
+              Ingresá un nuevo título para esta conversación.
             </DialogDescription>
           </DialogHeader>
           <Input
             value={renameTitle}
             onChange={(e) => setRenameTitle(e.target.value)}
-            placeholder="Conversation title"
+            placeholder="Título de la conversación"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleRename()
             }}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenameId(null)}>
-              Cancel
+              Cancelar
             </Button>
             <Button onClick={handleRename} disabled={isRenaming || !renameTitle.trim()}>
               {isRenaming ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
+                  Guardando...
                 </>
               ) : (
-                "Save"
+                "Guardar"
               )}
             </Button>
           </DialogFooter>

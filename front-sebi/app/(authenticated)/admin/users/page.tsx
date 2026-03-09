@@ -172,8 +172,8 @@ export default function UsersPage() {
   }
 
   const formatDate = (date?: string) => {
-    if (!date) return "Never"
-    return new Date(date).toLocaleDateString("en-US", {
+    if (!date) return "Nunca"
+    return new Date(date).toLocaleDateString("es-AR", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -196,15 +196,15 @@ export default function UsersPage() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <Users className="w-6 h-6 text-blue-400" />
-              <h1 className="text-2xl font-bold text-white">User Management</h1>
+              <h1 className="text-2xl font-bold text-white">Gestión de Usuarios</h1>
             </div>
             <p className="text-sm text-zinc-400 ml-9">
-              Manage user accounts, roles and permissions
+              Gestioná cuentas de usuario, roles y permisos
             </p>
           </div>
           <Button onClick={() => setShowRegister(true)}>
             <Plus className="w-4 h-4 mr-1" />
-            Add User
+            Agregar Usuario
           </Button>
         </div>
 
@@ -215,7 +215,7 @@ export default function UsersPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search users..."
+              placeholder="Buscar usuarios..."
               className="pl-10"
             />
           </div>
@@ -243,10 +243,10 @@ export default function UsersPage() {
           <div className="text-center py-20">
             <Users className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-white mb-1">
-              {search ? "No users found" : "No users yet"}
+              {search ? "Sin usuarios encontrados" : "Sin usuarios aún"}
             </h3>
             <p className="text-sm text-zinc-400">
-              {search ? "Try adjusting your search" : "Add your first user to get started"}
+              {search ? "Intentá ajustar tu búsqueda" : "Agregá tu primer usuario para comenzar"}
             </p>
           </div>
         ) : (
@@ -258,22 +258,22 @@ export default function UsersPage() {
                   <thead>
                     <tr className="border-b border-zinc-800">
                       <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">
-                        User
+                        Usuario
                       </th>
                       <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">
-                        Role
+                        Rol
                       </th>
                       <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">
-                        Provider
+                        Proveedor
                       </th>
                       <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">
-                        Status
+                        Estado
                       </th>
                       <th className="text-left text-xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">
-                        Last Login
+                        Último acceso
                       </th>
                       <th className="text-right text-xs font-medium text-zinc-500 uppercase tracking-wider px-4 py-3">
-                        Actions
+                        Acciones
                       </th>
                     </tr>
                   </thead>
@@ -314,7 +314,7 @@ export default function UsersPage() {
                           <Badge
                             variant={user.isActive ? "success" : "destructive"}
                           >
-                            {user.isActive ? "Active" : "Inactive"}
+                            {user.isActive ? "Activo" : "Inactivo"}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
@@ -336,12 +336,12 @@ export default function UsersPage() {
                                 {user.role === "admin" ? (
                                   <>
                                     <ShieldOff className="w-4 h-4 mr-2" />
-                                    Remove Admin
+                                    Quitar Admin
                                   </>
                                 ) : (
                                   <>
                                     <Shield className="w-4 h-4 mr-2" />
-                                    Make Admin
+                                    Hacer Admin
                                   </>
                                 )}
                               </DropdownMenuItem>
@@ -349,12 +349,12 @@ export default function UsersPage() {
                                 {user.isActive ? (
                                   <>
                                     <UserX className="w-4 h-4 mr-2" />
-                                    Deactivate
+                                    Desactivar
                                   </>
                                 ) : (
                                   <>
                                     <UserCheck className="w-4 h-4 mr-2" />
-                                    Activate
+                                    Activar
                                   </>
                                 )}
                               </DropdownMenuItem>
@@ -364,7 +364,7 @@ export default function UsersPage() {
                                 onClick={() => setDeleteUser(user)}
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
-                                Delete User
+                                Eliminar Usuario
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -433,7 +433,7 @@ export default function UsersPage() {
                           onClick={() => setDeleteUser(user)}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
+                          Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -443,13 +443,13 @@ export default function UsersPage() {
                       {user.role}
                     </Badge>
                     <Badge variant={user.isActive ? "success" : "destructive"}>
-                      {user.isActive ? "Active" : "Inactive"}
+                      {user.isActive ? "Activo" : "Inactivo"}
                     </Badge>
                     <span className="text-xs text-zinc-600 capitalize">{user.provider}</span>
                   </div>
                   <div className="flex items-center gap-1 mt-2 text-xs text-zinc-600">
                     <Clock className="w-3 h-3" />
-                    Last login: {formatDate(user.lastLoginAt)}
+                    Último acceso: {formatDate(user.lastLoginAt)}
                   </div>
                 </Card>
               ))}
@@ -460,7 +460,7 @@ export default function UsersPage() {
         {/* Summary */}
         {!isLoading && filteredUsers.length > 0 && (
           <p className="text-xs text-zinc-600 mt-4">
-            Showing {filteredUsers.length} of {users.length} users
+            Mostrando {filteredUsers.length} de {users.length} usuarios
           </p>
         )}
       </div>
@@ -469,14 +469,14 @@ export default function UsersPage() {
       <Dialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete User</DialogTitle>
+            <DialogTitle>Eliminar Usuario</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete <strong>{deleteUser?.name}</strong> ({deleteUser?.email})? This action cannot be undone.
+              ¿Estás seguro de que querés eliminar a <strong>{deleteUser?.name}</strong> ({deleteUser?.email})? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteUser(null)}>
-              Cancel
+              Cancelar
             </Button>
             <Button
               variant="destructive"
@@ -486,10 +486,10 @@ export default function UsersPage() {
               {isDeleting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Deleting...
+                  Eliminando...
                 </>
               ) : (
-                "Delete User"
+                "Eliminar Usuario"
               )}
             </Button>
           </DialogFooter>
@@ -500,9 +500,9 @@ export default function UsersPage() {
       <Dialog open={showRegister} onOpenChange={setShowRegister}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Register New User</DialogTitle>
+            <DialogTitle>Registrar Nuevo Usuario</DialogTitle>
             <DialogDescription>
-              Create a new user account with email and password.
+              Creá una nueva cuenta de usuario con email y contraseña.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleRegister} className="space-y-4">
@@ -512,19 +512,19 @@ export default function UsersPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="reg-name">Name</Label>
+              <Label htmlFor="reg-name">Nombre</Label>
               <Input
                 id="reg-name"
                 value={registerForm.name}
                 onChange={(e) =>
                   setRegisterForm((f) => ({ ...f, name: e.target.value }))
                 }
-                placeholder="Full name"
+                placeholder="Nombre completo"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="reg-email">Email</Label>
+              <Label htmlFor="reg-email">Correo electrónico</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                 <Input
@@ -541,7 +541,7 @@ export default function UsersPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="reg-password">Password</Label>
+              <Label htmlFor="reg-password">Contraseña</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                 <Input
@@ -552,14 +552,14 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setRegisterForm((f) => ({ ...f, password: e.target.value }))
                   }
-                  placeholder="Minimum 6 characters"
+                  placeholder="Mínimo 6 caracteres"
                   required
                   minLength={6}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="reg-role">Role</Label>
+              <Label htmlFor="reg-role">Rol</Label>
               <select
                 id="reg-role"
                 value={registerForm.role}
@@ -568,7 +568,7 @@ export default function UsersPage() {
                 }
                 className="flex h-9 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
-                <option value="user">User</option>
+                <option value="user">Usuario</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
@@ -578,16 +578,16 @@ export default function UsersPage() {
                 variant="outline"
                 onClick={() => setShowRegister(false)}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button type="submit" disabled={isRegistering}>
                 {isRegistering ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Creating...
+                    Creando...
                   </>
                 ) : (
-                  "Create User"
+                  "Crear Usuario"
                 )}
               </Button>
             </DialogFooter>

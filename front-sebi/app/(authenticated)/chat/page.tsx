@@ -140,10 +140,10 @@ function WelcomeState({
         <Bot className="w-8 h-8 text-white" />
       </div>
       <h2 className="text-2xl font-bold text-white mb-2">
-        How can I help you today?
+        ¿En qué puedo ayudarte hoy?
       </h2>
       <p className="text-zinc-400 text-center mb-8 max-w-md">
-        Ask me anything about your data. I can help you analyze, query, and understand your information.
+        Preguntame lo que quieras sobre tus datos. Puedo ayudarte a analizar, consultar y entender tu información.
       </p>
 
       {loadingSuggestions ? (
@@ -274,7 +274,7 @@ export default function ChatPage() {
       const errorMessage: Message = {
         role: "assistant",
         content:
-          "Sorry, I encountered an error processing your request. Please try again.",
+          "Lo siento, ocurrió un error al procesar tu solicitud. Por favor, intentá de nuevo.",
         timestamp: new Date().toISOString(),
       }
       setMessages((prev) => [...prev, errorMessage])
@@ -307,7 +307,7 @@ export default function ChatPage() {
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-zinc-400" />
           <h1 className="text-sm font-semibold text-white">
-            {conversationId ? "Conversation" : "New Chat"}
+            {conversationId ? "Conversación" : "Nuevo Chat"}
           </h1>
         </div>
         <Button
@@ -317,7 +317,7 @@ export default function ChatPage() {
           className="text-zinc-400 hover:text-white"
         >
           <Plus className="w-4 h-4 mr-1" />
-          New
+          Nuevo
         </Button>
       </div>
 
@@ -395,7 +395,7 @@ export default function ChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type your message..."
+              placeholder="Escribí tu mensaje..."
               className="flex-1 border-0 bg-transparent focus-visible:ring-0 text-white placeholder:text-zinc-500"
               disabled={isLoading}
               autoFocus
@@ -419,7 +419,7 @@ export default function ChatPage() {
             </Button>
           </div>
           <p className="text-[11px] text-zinc-600 text-center mt-2">
-            AI can make mistakes. Consider verifying important information.
+            La IA puede cometer errores. Considerá verificar la información importante.
           </p>
         </div>
       </div>

@@ -51,14 +51,20 @@ export class AuthController {
   @ApiOperation({ summary: 'Login/Register with Google OAuth' })
   @ApiResponse({ status: 200, description: 'Google auth successful, returns JWT token' })
   async googleAuth(@Body() googleAuthDto: GoogleAuthDto) {
-    // In a real implementation, you would verify the Google token
-    // and extract user info. For now, we return a placeholder.
     return this.authService.googleLogin({
-      email: 'google-user@example.com',
-      name: 'Google User',
-      googleId: googleAuthDto.token,
-      avatar: undefined,
+      email: googleAuthDto.email,
+      name: googleAuthDto.name,
+      googleId: googleAuthDto.googleId,
+      avatar: googleAuthDto.avatar,
     });
+  }
+
+  @Post('register-public')
+  @ApiOperation({ summary: 'Public self-registration (role: user only)' })
+  @ApiResponse({ status: 201, description: 'User registered and logged in' })
+  @ApiResponse({ status: 409, description: 'Email already registered' })
+  async registerPublic(@Body() registerDto: RegisterDto) {
+    return this.authService.registerPublic(registerDto);
   }
 
   @Get('profile')

@@ -127,7 +127,23 @@ export async function sendMessage(
 }
 
 export async function getSuggestions(): Promise<ChatSuggestion[]> {
-  return request<ChatSuggestion[]>("/chat/suggestions")
+  const data = await request<{ suggestions: string[] }>("/chat/suggestions")
+  return data.suggestions.map((text, i) => ({
+    id: String(i),
+    text,
+    category: "general",
+  }))
+}
+
+export async function registerPublic(formData: {
+  name: string
+  email: string
+  password: string
+}): Promise<{ access_token: string; user: { id: string; email: string; name: string; role: string; avatar?: string } }> {
+  return request("/auth/register-public", {
+    method: "POST",
+    body: JSON.stringify(formData),
+  })
 }
 
 // Tracking

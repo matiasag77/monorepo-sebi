@@ -1,6 +1,5 @@
 import {
   Injectable,
-  UnauthorizedException,
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
@@ -68,6 +67,37 @@ export class AuthService {
     });
     const { password: _password, ...result } = user.toObject();
     return result;
+  }
+
+  async registerPublic(registerDto: RegisterDto) {
+    const existingUser = await this.usersService.findByEmail(registerDto.email);
+    if (existingUser) {
+      throw new ConflictException('Email already registered');
+    }
+    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+    const user = await this.usersService.create({
+      ...registerDto,
+      role: 'user',
+      password: hashedPassword,
+      provider: 'local',
+    });
+    await this.usersService.trackLogin(String(user._id));
+    const payload = {
+      email: user.email,
+      sub: user._id,
+      name: user.name,
+      role: user.role,
+    };
+    return {
+      access_token: this.jwtService.sign(payload),
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        avatar: user.avatar,
+      },
+    };
   }
 
   async googleLogin(googleData: {

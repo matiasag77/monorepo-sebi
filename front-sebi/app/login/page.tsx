@@ -7,7 +7,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
-import { Bot, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react"
+import { Bot, Mail, Lock, Loader2, Eye, EyeOff, Copy, Check } from "lucide-react"
+import * as api from "@/lib/api"
+
+function generatePassword(length = 12): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$"
+  let pwd = ""
+  for (let i = 0; i < length; i++) {
+    pwd += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return pwd
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -16,19 +26,49 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [autoRegistered, setAutoRegistered] = useState<{ password: string } | null>(null)
+  const [copied, setCopied] = useState(false)
   const router = useRouter()
   const { loginWithCredentials, loginWithGoogle } = useAuth()
+
+  const handleCopyPassword = () => {
+    if (autoRegistered) {
+      navigator.clipboard.writeText(autoRegistered.password)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setAutoRegistered(null)
     setIsLoading(true)
 
     try {
       await loginWithCredentials(email, password)
       router.push("/chat")
     } catch {
-      setError("Email o contraseña incorrectos. Por favor, intentá de nuevo.")
+      // Login failed — try auto-register if it looks like a new user
+      const generatedPassword = generatePassword()
+      const namePart = email.split("@")[0].replace(/[._]/g, " ")
+      const name = namePart.charAt(0).toUpperCase() + namePart.slice(1)
+
+      try {
+        await api.registerPublic({ name, email, password: generatedPassword })
+        // Auto-login with the generated password
+        await loginWithCredentials(email, generatedPassword)
+        setAutoRegistered({ password: generatedPassword })
+        router.push("/chat")
+      } catch (regErr) {
+        const msg = regErr instanceof Error ? regErr.message : ""
+        if (msg.toLowerCase().includes("already")) {
+          // User exists but password was wrong
+          setError("Email o contraseña incorrectos. Por favor, intentá de nuevo.")
+        } else {
+          setError("No se pudo iniciar sesión. Por favor, intentá de nuevo.")
+        }
+      }
     } finally {
       setIsLoading(false)
     }
@@ -51,7 +91,6 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-transparent to-purple-600/10 animate-gradient" />
         <div className="absolute top-1/4 -left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-float" />
         <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-purple-500/8 rounded-full blur-3xl animate-float" style={{ animationDelay: "3s" }} />
-        {/* Grid pattern overlay */}
         <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
@@ -75,9 +114,9 @@ export default function LoginPage() {
         {/* Login card */}
         <Card className="glass-strong animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl text-center">Bienvenido de nuevo</CardTitle>
+            <CardTitle className="text-xl text-center">Bienvenido</CardTitle>
             <CardDescription className="text-center">
-              Ingresá tus credenciales para continuar
+              Ingresá tu email para iniciar sesión o crear una cuenta
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -85,6 +124,22 @@ export default function LoginPage() {
               {error && (
                 <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm animate-fade-in">
                   {error}
+                </div>
+              )}
+
+              {autoRegistered && (
+                <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm animate-fade-in space-y-2">
+                  <p className="font-medium">¡Cuenta creada! Guardá tu contraseña generada:</p>
+                  <div className="flex items-center gap-2 bg-zinc-900/60 rounded-md px-3 py-1.5">
+                    <code className="flex-1 text-xs font-mono text-zinc-200">{autoRegistered.password}</code>
+                    <button
+                      type="button"
+                      onClick={handleCopyPassword}
+                      className="text-zinc-400 hover:text-white transition-colors"
+                    >
+                      {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -132,6 +187,9 @@ export default function LoginPage() {
                     )}
                   </button>
                 </div>
+                <p className="text-[11px] text-zinc-500">
+                  Si sos nuevo, se creará una cuenta automáticamente con el email ingresado.
+                </p>
               </div>
 
               <Button
@@ -142,10 +200,10 @@ export default function LoginPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Iniciando sesión...
+                    Procesando...
                   </>
                 ) : (
-                  "Iniciar sesión"
+                  "Ingresar / Registrarse"
                 )}
               </Button>
             </form>

@@ -88,6 +88,5 @@ pids
 *.sw?
 
 # Compiled output
-lib/
 dist/
 out/

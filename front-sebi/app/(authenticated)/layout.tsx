@@ -31,9 +31,9 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Chat", href: "/chat", icon: <MessageSquare className="w-5 h-5" /> },
-  { label: "History", href: "/history", icon: <History className="w-5 h-5" /> },
+  { label: "Historial", href: "/history", icon: <History className="w-5 h-5" /> },
   { label: "Dashboard", href: "/admin", icon: <LayoutDashboard className="w-5 h-5" />, adminOnly: true },
-  { label: "Users", href: "/admin/users", icon: <Users className="w-5 h-5" />, adminOnly: true },
+  { label: "Usuarios", href: "/admin/users", icon: <Users className="w-5 h-5" />, adminOnly: true },
 ]
 
 function SidebarContent({
@@ -70,8 +70,8 @@ function SidebarContent({
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h2 className="text-sm font-bold text-white truncate">Data AI</h2>
-            <p className="text-[11px] text-zinc-500 truncate">Assistant</p>
+            <h2 className="text-sm font-bold text-white truncate">Sebi AI</h2>
+            <p className="text-[11px] text-zinc-500 truncate">Asistente</p>
           </div>
         )}
       </div>
@@ -165,7 +165,7 @@ function SidebarContent({
           onClick={logout}
         >
           <LogOut className="w-4 h-4" />
-          {!collapsed && <span className="ml-2">Logout</span>}
+          {!collapsed && <span className="ml-2">Cerrar sesión</span>}
         </Button>
       </div>
     </div>
@@ -221,7 +221,7 @@ export default function AuthenticatedLayout({
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
               <Bot className="w-4 h-4 text-white" />
             </div>
-            <span className="text-sm font-semibold text-white">Data AI</span>
+            <span className="text-sm font-semibold text-white">Sebi AI</span>
           </div>
         </div>
 

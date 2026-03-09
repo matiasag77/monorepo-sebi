@@ -59,29 +59,29 @@ export default function AdminDashboard() {
 
   const stats: StatsCard[] = [
     {
-      label: "Total Users",
+      label: "Total de Usuarios",
       value: users.total,
       icon: <Users className="w-5 h-5" />,
       color: "text-blue-400",
       bgColor: "bg-blue-500/10",
     },
     {
-      label: "Active Users",
+      label: "Usuarios Activos",
       value: users.active,
       icon: <UserCheck className="w-5 h-5" />,
       color: "text-emerald-400",
       bgColor: "bg-emerald-500/10",
     },
     {
-      label: "Recent Events",
+      label: "Eventos Recientes",
       value: events.length,
       icon: <Activity className="w-5 h-5" />,
       color: "text-purple-400",
       bgColor: "bg-purple-500/10",
     },
     {
-      label: "System Status",
-      value: "Online",
+      label: "Estado del Sistema",
+      value: "En línea",
       icon: <TrendingUp className="w-5 h-5" />,
       color: "text-amber-400",
       bgColor: "bg-amber-500/10",
@@ -94,11 +94,11 @@ export default function AdminDashboard() {
     const diffMs = now.getTime() - d.getTime()
     const diffMins = Math.floor(diffMs / (1000 * 60))
 
-    if (diffMins < 1) return "Just now"
-    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffMins < 1) return "Ahora mismo"
+    if (diffMins < 60) return `hace ${diffMins}m`
     const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `${diffHours}h ago`
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    if (diffHours < 24) return `hace ${diffHours}h`
+    return d.toLocaleDateString("es-AR", { month: "short", day: "numeric" })
   }
 
   const getActionBadgeVariant = (action: string) => {
@@ -116,16 +116,16 @@ export default function AdminDashboard() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <LayoutDashboard className="w-6 h-6 text-blue-400" />
-              <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
+              <h1 className="text-2xl font-bold text-white">Panel de Administración</h1>
             </div>
             <p className="text-sm text-zinc-400 ml-9">
-              Overview of your application
+              Resumen de tu aplicación
             </p>
           </div>
           <Link href="/admin/users">
             <Button variant="outline" size="sm">
               <Users className="w-4 h-4 mr-1" />
-              Manage Users
+              Gestionar Usuarios
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </Link>
@@ -163,9 +163,9 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Activity className="w-5 h-5 text-purple-400" />
-                Recent Activity
+                Actividad Reciente
               </CardTitle>
-              <Badge variant="secondary">{events.length} events</Badge>
+              <Badge variant="secondary">{events.length} eventos</Badge>
             </div>
           </CardHeader>
           <CardContent>
@@ -183,7 +183,7 @@ export default function AdminDashboard() {
             ) : events.length === 0 ? (
               <div className="text-center py-10">
                 <Activity className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
-                <p className="text-sm text-zinc-500">No recent activity</p>
+                <p className="text-sm text-zinc-500">Sin actividad reciente</p>
               </div>
             ) : (
               <ScrollArea className="max-h-[400px]">
@@ -222,9 +222,9 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors">
-                    User Management
+                    Gestión de Usuarios
                   </h3>
-                  <p className="text-xs text-zinc-500">Manage users, roles and permissions</p>
+                  <p className="text-xs text-zinc-500">Gestioná usuarios, roles y permisos</p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
               </div>
@@ -238,9 +238,9 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-white group-hover:text-emerald-400 transition-colors">
-                    Chat Assistant
+                    Asistente de Chat
                   </h3>
-                  <p className="text-xs text-zinc-500">Go to the AI chat interface</p>
+                  <p className="text-xs text-zinc-500">Ir a la interfaz de chat con IA</p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
               </div>

@@ -24,8 +24,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Data AI Assistant",
-  description: "Intelligent Data Assistant powered by AI",
+  title: "Sebi AI",
+  description: "Asistente de datos inteligente impulsado por IA",
 };
 
 export default function RootLayout({

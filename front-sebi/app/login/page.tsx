@@ -28,7 +28,7 @@ export default function LoginPage() {
       await loginWithCredentials(email, password)
       router.push("/chat")
     } catch {
-      setError("Invalid email or password. Please try again.")
+      setError("Email o contraseña incorrectos. Por favor, intentá de nuevo.")
     } finally {
       setIsLoading(false)
     }
@@ -39,7 +39,7 @@ export default function LoginPage() {
     try {
       await loginWithGoogle()
     } catch {
-      setError("Google login failed. Please try again.")
+      setError("El inicio de sesión con Google falló. Por favor, intentá de nuevo.")
       setIsGoogleLoading(false)
     }
   }
@@ -68,16 +68,16 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 mb-4 shadow-lg shadow-blue-500/25">
             <Bot className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Data AI Assistant</h1>
-          <p className="text-zinc-400">Sign in to access your intelligent assistant</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Sebi AI</h1>
+          <p className="text-zinc-400">Iniciá sesión para acceder a tu asistente inteligente</p>
         </div>
 
         {/* Login card */}
         <Card className="glass-strong animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl text-center">Welcome back</CardTitle>
+            <CardTitle className="text-xl text-center">Bienvenido de nuevo</CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to continue
+              Ingresá tus credenciales para continuar
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -89,13 +89,13 @@ export default function LoginPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Correo electrónico</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <Input
                     id="email"
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder="vos@ejemplo.com"
                     className="pl-10"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -106,13 +106,13 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Contraseña</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
+                    placeholder="Ingresá tu contraseña"
                     className="pl-10 pr-10"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -142,10 +142,10 @@ export default function LoginPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Signing in...
+                    Iniciando sesión...
                   </>
                 ) : (
-                  "Sign in"
+                  "Iniciar sesión"
                 )}
               </Button>
             </form>
@@ -155,7 +155,7 @@ export default function LoginPage() {
                 <div className="w-full border-t border-zinc-800" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-zinc-950 px-2 text-zinc-500">or continue with</span>
+                <span className="bg-zinc-950 px-2 text-zinc-500">o continuar con</span>
               </div>
             </div>
 
@@ -187,11 +187,11 @@ export default function LoginPage() {
                   />
                 </svg>
               )}
-              Continue with Google
+              Continuar con Google
             </Button>
 
             <p className="mt-6 text-center text-xs text-zinc-500">
-              Secured with enterprise-grade encryption
+              Protegido con encriptación de nivel empresarial
             </p>
           </CardContent>
         </Card>

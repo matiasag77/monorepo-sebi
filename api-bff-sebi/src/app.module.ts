@@ -6,6 +6,7 @@ import { UsersModule } from './users/users.module';
 import { ChatModule } from './chat/chat.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { TrackingModule } from './tracking/tracking.module';
+import { BigQueryModule } from './bigquery/bigquery.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { TrackingModule } from './tracking/tracking.module';
     ChatModule,
     ConversationsModule,
     TrackingModule,
+    BigQueryModule,
   ],
 })
 export class AppModule {}

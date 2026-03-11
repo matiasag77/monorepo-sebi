@@ -17,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { ConversationsService } from './conversations.service';
 import { ChatService } from '../chat/chat.service';
+import { BigQueryService } from '../bigquery/bigquery.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
@@ -30,6 +31,7 @@ export class ConversationsController {
   constructor(
     private readonly conversationsService: ConversationsService,
     private readonly chatService: ChatService,
+    private readonly bigQueryService: BigQueryService,
   ) {}
 
   @Post()
@@ -107,6 +109,7 @@ export class ConversationsController {
   })
   @ApiResponse({ status: 404, description: 'Conversation not found' })
   async addMessage(
+    @Request() req,
     @Param('id') id: string,
     @Body() sendMessageDto: SendMessageDto,
   ) {
@@ -122,6 +125,19 @@ export class ConversationsController {
       'assistant',
       aiResult.response,
     );
+
+    // Log trace to BigQuery (fire and forget)
+    this.bigQueryService
+      .insertConversationTrace({
+        user_id: req.user.userId,
+        user_email: req.user.email,
+        user_name: req.user.name,
+        conversation_id: id,
+        question: sendMessageDto.content,
+        answer: aiResult.response,
+        timestamp: new Date().toISOString(),
+      })
+      .catch(() => {});
 
     const messages = conversation.messages;
     return {

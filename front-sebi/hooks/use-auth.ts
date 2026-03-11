@@ -17,8 +17,10 @@ export function useAuth() {
   useEffect(() => {
     if (backendToken) {
       setToken(backendToken)
+    } else if (status === "unauthenticated") {
+      clearToken()
     }
-  }, [backendToken])
+  }, [backendToken, status])
 
   const loginWithCredentials = useCallback(
     async (email: string, password: string) => {

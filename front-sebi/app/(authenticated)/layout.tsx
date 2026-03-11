@@ -83,7 +83,10 @@ function SidebarContent({
         {filteredItems.map((item) => {
           const isActive =
             pathname === item.href ||
-            (item.href !== "/chat" && item.href !== "/history" && pathname.startsWith(item.href))
+            (item.href !== "/chat" &&
+              item.href !== "/history" &&
+              item.href !== "/admin" &&
+              pathname.startsWith(item.href))
 
           return (
             <Link

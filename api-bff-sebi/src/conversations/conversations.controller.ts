@@ -111,10 +111,10 @@ export class ConversationsController {
     @Body() sendMessageDto: SendMessageDto,
   ) {
     // Add user message
-    await this.conversationsService.addMessage(id, 'user', sendMessageDto.message);
+    await this.conversationsService.addMessage(id, 'user', sendMessageDto.content);
 
     // Get AI response
-    const aiResult = this.chatService.sendMessage(sendMessageDto.message);
+    const aiResult = await this.chatService.sendMessage(sendMessageDto.content);
 
     // Add assistant message
     const conversation = await this.conversationsService.addMessage(

@@ -108,7 +108,7 @@ export default function LoginPage() {
             <Bot className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Sebi AI</h1>
-          <p className="text-zinc-400">Iniciá sesión para acceder a tu asistente inteligente</p>
+          <p className="text-zinc-400">Acceder a tu asistente inteligente</p>
         </div>
 
         {/* Login card */}
@@ -116,7 +116,7 @@ export default function LoginPage() {
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl text-center">Bienvenido</CardTitle>
             <CardDescription className="text-center">
-              Ingresá tu email para iniciar sesión o crear una cuenta
+              Inicia con Google o ingresá tu email para iniciar sesión
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -150,7 +150,7 @@ export default function LoginPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="vos@ejemplo.com"
+                    placeholder="tu@forus.cl"
                     className="pl-10"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -188,7 +188,7 @@ export default function LoginPage() {
                   </button>
                 </div>
                 <p className="text-[11px] text-zinc-500">
-                  Si sos nuevo, se creará una cuenta automáticamente con el email ingresado.
+                  Si eres nuevo, se creará una cuenta automáticamente con el email ingresado.
                 </p>
               </div>
 

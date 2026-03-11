@@ -143,7 +143,7 @@ function WelcomeState({
         ¿En qué puedo ayudarte hoy?
       </h2>
       <p className="text-zinc-400 text-center mb-8 max-w-md">
-        Preguntame lo que quieras sobre tus datos. Puedo ayudarte a analizar, consultar y entender tu información.
+        Preguntame lo que quieras sobre datos.
       </p>
 
       {loadingSuggestions ? (

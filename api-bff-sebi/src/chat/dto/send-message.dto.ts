@@ -7,7 +7,7 @@ export class SendMessageDto {
   @IsOptional()
   conversationId?: string;
 
-  @ApiProperty({ example: '¿Cómo estuvieron las ventas?', description: 'Message to send' })
+  @ApiProperty({ example: '¿Cómo estuvieron las ventas?', description: 'Message content to send' })
   @IsString()
-  message: string;
+  content: string;
 }

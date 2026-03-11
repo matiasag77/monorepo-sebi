@@ -21,6 +21,8 @@ import {
 import { cn } from "@/lib/utils"
 import * as api from "@/lib/api"
 import type { Message, ChatSuggestion } from "@/types"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 function TypingIndicator() {
   return (
@@ -41,36 +43,90 @@ function TypingIndicator() {
   )
 }
 
-function renderMessageContent(content: string) {
-  const parts = content.split(/(\*\*.*?\*\*)/g)
-  return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return (
-        <strong key={i} className="font-semibold text-white">
-          {part.slice(2, -2)}
-        </strong>
-      )
-    }
-    // Handle bullet points
-    const lines = part.split("\n")
-    return lines.map((line, j) => {
-      const trimmed = line.trim()
-      if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-        return (
-          <span key={`${i}-${j}`} className="block pl-4 relative before:content-[''] before:absolute before:left-1.5 before:top-[0.6em] before:w-1 before:h-1 before:rounded-full before:bg-zinc-500">
-            {trimmed.slice(2)}
-            {j < lines.length - 1 && "\n"}
-          </span>
-        )
-      }
-      return (
-        <span key={`${i}-${j}`}>
-          {line}
-          {j < lines.length - 1 && "\n"}
-        </span>
-      )
-    })
-  })
+function MarkdownContent({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+        strong: ({ children }) => (
+          <strong className="font-semibold text-white">{children}</strong>
+        ),
+        em: ({ children }) => <em className="italic">{children}</em>,
+        h1: ({ children }) => (
+          <h1 className="text-lg font-bold text-white mb-2">{children}</h1>
+        ),
+        h2: ({ children }) => (
+          <h2 className="text-base font-bold text-white mb-2">{children}</h2>
+        ),
+        h3: ({ children }) => (
+          <h3 className="text-sm font-bold text-white mb-1">{children}</h3>
+        ),
+        ul: ({ children }) => (
+          <ul className="list-disc list-inside space-y-1 mb-2">{children}</ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="list-decimal list-inside space-y-1 mb-2">{children}</ol>
+        ),
+        li: ({ children }) => <li className="text-zinc-200">{children}</li>,
+        code: ({ className, children, ...props }) => {
+          const isBlock = className?.includes("language-")
+          if (isBlock) {
+            return (
+              <code
+                className="block bg-zinc-900/80 rounded-lg p-3 my-2 text-xs overflow-x-auto text-zinc-200 font-mono"
+                {...props}
+              >
+                {children}
+              </code>
+            )
+          }
+          return (
+            <code
+              className="bg-zinc-800 rounded px-1.5 py-0.5 text-xs text-blue-300 font-mono"
+              {...props}
+            >
+              {children}
+            </code>
+          )
+        },
+        pre: ({ children }) => <pre className="my-2">{children}</pre>,
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-2 border-blue-500/50 pl-3 my-2 text-zinc-400 italic">
+            {children}
+          </blockquote>
+        ),
+        a: ({ href, children }) => (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
+          >
+            {children}
+          </a>
+        ),
+        table: ({ children }) => (
+          <div className="overflow-x-auto my-2">
+            <table className="min-w-full text-xs border-collapse">{children}</table>
+          </div>
+        ),
+        th: ({ children }) => (
+          <th className="border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-left text-white font-semibold">
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="border border-zinc-700 px-3 py-1.5 text-zinc-300">
+            {children}
+          </td>
+        ),
+        hr: () => <hr className="border-zinc-700 my-3" />,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  )
 }
 
 function MessageBubble({ message, isUser }: { message: Message; isUser: boolean }) {
@@ -95,13 +151,13 @@ function MessageBubble({ message, isUser }: { message: Message; isUser: boolean 
       </Avatar>
       <div
         className={cn(
-          "max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
+          "max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
           isUser
-            ? "bg-blue-600 text-white rounded-tr-md"
+            ? "bg-blue-600 text-white rounded-tr-md whitespace-pre-wrap"
             : "glass text-zinc-200 rounded-tl-md"
         )}
       >
-        {isUser ? message.content : renderMessageContent(message.content)}
+        {isUser ? message.content : <MarkdownContent content={message.content} />}
       </div>
     </div>
   )

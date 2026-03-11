@@ -9,6 +9,10 @@
 # Testing
 /coverage
 
+main.py
+.venv/
+
+
 # Next.js
 **/.next/
 **/out/

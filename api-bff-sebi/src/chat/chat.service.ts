@@ -28,7 +28,10 @@ export class ChatService {
       }
 
       const data = await res.json();
-      return { response: data.response ?? data.message ?? JSON.stringify(data) };
+      console.log(data);
+      // return { response: data.response ?? data.message ?? JSON.stringify(data) };
+      return { response: data?.data?.response ?? data.response ?? data.message ?? JSON.stringify(data) };
+
     } catch (error) {
       this.logger.error(`Error calling AI API: ${error}`);
       return {

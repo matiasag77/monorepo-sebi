@@ -1,98 +1,406 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# SEBI API BFF - Backend NestJS
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API Backend-for-Frontend del chatbot SEBI. Construida con NestJS, provee autenticacion, gestion de conversaciones, integracion con IA y analytics.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Indice
 
-## Description
+- [Requisitos](#requisitos)
+- [Instalacion](#instalacion)
+- [Configuracion](#configuracion)
+- [Ejecucion](#ejecucion)
+- [Arquitectura](#arquitectura)
+- [Modulos](#modulos)
+- [API Reference](#api-reference)
+- [Modelos de Datos](#modelos-de-datos)
+- [Tests](#tests)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+## Requisitos
 
-```bash
-$ npm install
-```
+- Node.js >= 18
+- MongoDB >= 6
+- Cuenta de Google Cloud (para BigQuery y OAuth)
+- Credenciales de la API de Skelligen
 
-## Compile and run the project
+---
+
+## Instalacion
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cd api-bff-sebi
+npm install
+cp .env.example .env
+# Editar .env con los valores correspondientes
 ```
 
-## Run tests
+---
+
+## Configuracion
+
+Crear el archivo `.env` basado en `.env.example`:
+
+```env
+# Servidor
+PORT=3333
+FRONTEND_URL=http://localhost:3000
+
+# Base de datos
+MONGODB_URI=mongodb://localhost:27017/sebi-chatbot
+
+# JWT
+JWT_SECRET=tu-secreto-jwt-seguro
+
+# Google OAuth
+GOOGLE_CLIENT_ID=tu-google-client-id
+GOOGLE_CLIENT_SECRET=tu-google-client-secret
+
+# BigQuery (Analytics)
+BIGQUERY_PROJECT_ID=tu-proyecto-gcp
+BIGQUERY_KEY_FILE=./path-to-service-account-key.json
+BIGQUERY_DATASET=sebi_chatbot
+BIGQUERY_TABLE=conversation_traces
+```
+
+### Configuracion de Google Cloud BigQuery
+
+1. Crear un proyecto en Google Cloud Platform
+2. Habilitar la API de BigQuery
+3. Crear una cuenta de servicio con rol `BigQuery Data Editor`
+4. Descargar el archivo JSON de credenciales
+5. Configurar `BIGQUERY_KEY_FILE` con la ruta al archivo
+
+---
+
+## Ejecucion
 
 ```bash
-# unit tests
-$ npm run test
+# Desarrollo (hot-reload)
+npm run start:dev
 
-# e2e tests
-$ npm run test:e2e
+# Produccion
+npm run build
+npm run start:prod
 
-# test coverage
-$ npm run test:cov
+# Modo debug
+npm run start:debug
 ```
 
-## Deployment
+La API estara disponible en: `http://localhost:3333`
+Documentacion Swagger: `http://localhost:3333/api/docs`
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+---
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Arquitectura
+
+```
+api-bff-sebi/
+├── src/
+│   ├── app.module.ts          # Modulo raiz
+│   ├── main.ts                # Entry point (Swagger, CORS, validacion)
+│   ├── auth/                  # Autenticacion y autorizacion
+│   │   ├── auth.controller.ts
+│   │   ├── auth.service.ts
+│   │   ├── auth.module.ts
+│   │   ├── decorators/        # @Roles()
+│   │   ├── dto/               # LoginDto, RegisterDto, GoogleAuthDto
+│   │   ├── guards/            # JwtAuthGuard, LocalAuthGuard, RolesGuard
+│   │   └── strategies/        # jwt.strategy, local.strategy, google.strategy
+│   ├── users/                 # Gestion de usuarios
+│   │   ├── users.controller.ts
+│   │   ├── users.service.ts
+│   │   ├── users.module.ts
+│   │   ├── dto/               # UpdateUserDto
+│   │   └── schemas/           # user.schema.ts
+│   ├── chat/                  # Integracion con IA (Skelligen)
+│   │   ├── chat.controller.ts
+│   │   ├── chat.service.ts
+│   │   ├── chat.module.ts
+│   │   └── dto/               # SendMessageDto
+│   ├── conversations/         # Historial de conversaciones
+│   │   ├── conversations.controller.ts
+│   │   ├── conversations.service.ts
+│   │   ├── conversations.module.ts
+│   │   ├── dto/               # CreateConversationDto, UpdateConversationDto
+│   │   └── schemas/           # conversation.schema.ts
+│   ├── tracking/              # Tracking de eventos de usuario
+│   │   ├── tracking.service.ts
+│   │   ├── tracking.module.ts
+│   │   └── schemas/           # tracking-event.schema.ts
+│   └── bigquery/              # Integracion con Google BigQuery
+│       ├── bigquery.service.ts
+│       └── bigquery.module.ts
+├── test/                      # Tests e2e
+├── .env.example
+├── nest-cli.json
+├── package.json
+└── tsconfig.json
+```
+
+---
+
+## Modulos
+
+### Auth Module
+
+Maneja toda la autenticacion y autorizacion de la aplicacion.
+
+**Estrategias implementadas:**
+- `LocalStrategy` - Autenticacion por email/password con bcrypt
+- `JwtStrategy` - Validacion de tokens JWT
+- `GoogleStrategy` - OAuth2 con Google
+
+**Guards disponibles:**
+- `JwtAuthGuard` - Protege rutas que requieren autenticacion
+- `LocalAuthGuard` - Usado en el endpoint de login
+- `RolesGuard` - Control de acceso basado en roles
+
+**Roles del sistema:**
+- `user` - Usuario estandar, puede chatear y ver su historial
+- `admin` - Administrador, acceso completo a gestion de usuarios
+
+---
+
+### Users Module
+
+Gestion de usuarios registrados en MongoDB.
+
+**Schema del usuario:**
+```typescript
+{
+  email: string        // unico, requerido
+  password: string     // hasheada con bcrypt
+  name: string         // nombre del usuario
+  role: 'user' | 'admin'
+  googleId?: string    // ID de Google OAuth
+  avatar?: string      // URL de avatar
+  isActive: boolean    // estado del usuario
+  createdAt: Date
+  updatedAt: Date
+}
+```
+
+---
+
+### Chat Module
+
+Integracion con la API externa de IA (Skelligen) para procesar mensajes y generar respuestas.
+
+**Funcionalidades:**
+- Enviar mensajes a la IA y recibir respuestas
+- Generar lista de mensajes sugeridos para el usuario
+
+---
+
+### Conversations Module
+
+Manejo del historial de conversaciones por usuario.
+
+**Schema de conversacion:**
+```typescript
+{
+  userId: ObjectId     // referencia al usuario
+  title: string        // titulo de la conversacion
+  messages: [
+    {
+      role: 'user' | 'assistant'
+      content: string
+      timestamp: Date
+    }
+  ]
+  createdAt: Date
+  updatedAt: Date
+}
+```
+
+---
+
+### BigQuery Module
+
+Servicio global para insertar trazas de conversacion en Google BigQuery para analytics.
+
+**Datos registrados por mensaje:**
+- `user_id`, `user_email`, `user_name`
+- `conversation_id`
+- `question` (mensaje del usuario)
+- `answer` (respuesta de la IA)
+- `timestamp`
+
+---
+
+### Tracking Module
+
+Registro de eventos de usuario en MongoDB para auditoria interna.
+
+**Eventos registrados:**
+- `login`, `logout`
+- `chat_message`
+- Otras acciones de usuario
+
+---
+
+## API Reference
+
+> Documentacion interactiva completa disponible en `http://localhost:3333/api/docs` (Swagger UI)
+
+### Prefijo global: `/api`
+
+### Auth (`/api/auth`)
+
+| Metodo | Ruta | Auth | Descripcion |
+|--------|------|------|-------------|
+| POST | `/auth/login` | - | Login con email y password |
+| POST | `/auth/register` | JWT (admin) | Registrar nuevo usuario (solo admin) |
+| POST | `/auth/register-public` | - | Auto-registro publico (rol: user) |
+| POST | `/auth/google` | - | Login/registro con Google OAuth |
+| GET | `/auth/profile` | JWT | Obtener perfil del usuario actual |
+
+**Body de login:**
+```json
+{
+  "email": "usuario@ejemplo.com",
+  "password": "contraseña"
+}
+```
+
+**Respuesta exitosa:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "user": {
+    "id": "...",
+    "email": "...",
+    "name": "...",
+    "role": "user"
+  }
+}
+```
+
+---
+
+### Users (`/api/users`)
+
+Todos los endpoints requieren JWT.
+
+| Metodo | Ruta | Roles | Descripcion |
+|--------|------|-------|-------------|
+| GET | `/users` | admin | Listar todos los usuarios |
+| GET | `/users/:id` | user, admin | Obtener usuario por ID |
+| PUT | `/users/:id` | user, admin | Actualizar usuario |
+| DELETE | `/users/:id` | admin | Eliminar usuario |
+
+---
+
+### Conversations (`/api/conversations`)
+
+Todos los endpoints requieren JWT.
+
+| Metodo | Ruta | Descripcion |
+|--------|------|-------------|
+| POST | `/conversations` | Crear nueva conversacion |
+| GET | `/conversations` | Listar conversaciones del usuario actual |
+| GET | `/conversations/:id` | Obtener conversacion por ID |
+| PUT | `/conversations/:id` | Actualizar conversacion (ej. renombrar) |
+| DELETE | `/conversations/:id` | Eliminar conversacion |
+| POST | `/conversations/:id/messages` | Enviar mensaje y obtener respuesta de la IA |
+
+**Body de envio de mensaje:**
+```json
+{
+  "content": "Cual es el estado de mi solicitud?"
+}
+```
+
+**Respuesta de mensaje:**
+```json
+{
+  "userMessage": {
+    "role": "user",
+    "content": "Cual es el estado de mi solicitud?",
+    "timestamp": "2024-01-01T12:00:00.000Z"
+  },
+  "assistantMessage": {
+    "role": "assistant",
+    "content": "Tu solicitud se encuentra en proceso...",
+    "timestamp": "2024-01-01T12:00:01.000Z"
+  },
+  "conversation": { }
+}
+```
+
+---
+
+### Chat (`/api/chat`)
+
+Requiere JWT.
+
+| Metodo | Ruta | Descripcion |
+|--------|------|-------------|
+| POST | `/chat/send` | Enviar mensaje directo a la IA |
+| GET | `/chat/suggestions` | Obtener mensajes sugeridos |
+
+---
+
+## Modelos de Datos
+
+### User Schema (MongoDB)
+
+```typescript
+@Schema({ timestamps: true })
+export class User {
+  @Prop({ required: true, unique: true })
+  email: string;
+
+  @Prop()
+  password: string;              // bcrypt hash
+
+  @Prop({ required: true })
+  name: string;
+
+  @Prop({ default: 'user', enum: ['user', 'admin'] })
+  role: string;
+
+  @Prop()
+  googleId: string;
+
+  @Prop()
+  avatar: string;
+
+  @Prop({ default: true })
+  isActive: boolean;
+}
+```
+
+### Conversation Schema (MongoDB)
+
+```typescript
+@Schema({ timestamps: true })
+export class Conversation {
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  userId: Types.ObjectId;
+
+  @Prop({ required: true })
+  title: string;
+
+  @Prop([MessageSchema])
+  messages: Message[];
+}
+```
+
+---
+
+## Tests
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Tests unitarios
+npm run test
+
+# Tests en modo watch
+npm run test:watch
+
+# Tests e2e
+npm run test:e2e
+
+# Coverage
+npm run test:cov
 ```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

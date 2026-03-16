@@ -7,12 +7,14 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
+import { TrackingService } from '../tracking/tracking.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private trackingService: TrackingService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -36,6 +38,7 @@ export class AuthService {
 
   async login(user: any) {
     await this.usersService.trackLogin(user._id);
+    await this.trackingService.logEvent({ userId: String(user._id), action: 'login' });
     const payload = {
       email: user.email,
       sub: user._id,
@@ -82,6 +85,7 @@ export class AuthService {
       provider: 'local',
     });
     await this.usersService.trackLogin(String(user._id));
+    await this.trackingService.logEvent({ userId: String(user._id), action: 'login' });
     const payload = {
       email: user.email,
       sub: user._id,
@@ -120,6 +124,7 @@ export class AuthService {
       throw new ForbiddenException('Account is deactivated');
     }
     await this.usersService.trackLogin(String(user._id));
+    await this.trackingService.logEvent({ userId: String(user._id), action: 'login' });
     const payload = {
       email: user.email,
       sub: user._id,

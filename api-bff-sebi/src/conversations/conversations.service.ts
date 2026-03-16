@@ -7,12 +7,14 @@ import {
 } from './schemas/conversation.schema';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
+import { TrackingService } from '../tracking/tracking.service';
 
 @Injectable()
 export class ConversationsService {
   constructor(
     @InjectModel(Conversation.name)
     private conversationModel: Model<ConversationDocument>,
+    private trackingService: TrackingService,
   ) {}
 
   async create(
@@ -24,7 +26,9 @@ export class ConversationsService {
       userId,
       messages: [],
     });
-    return conversation.save();
+    const saved = await conversation.save();
+    await this.trackingService.logEvent({ userId, action: 'create_conversation', metadata: { conversationId: String(saved._id) } });
+    return saved;
   }
 
   async findAllByUser(userId: string): Promise<ConversationDocument[]> {
@@ -60,6 +64,7 @@ export class ConversationsService {
     if (!deleted) {
       throw new NotFoundException(`Conversation with ID ${id} not found`);
     }
+    await this.trackingService.logEvent({ userId: String(deleted.userId), action: 'delete_conversation', metadata: { conversationId: id } });
     return deleted;
   }
 

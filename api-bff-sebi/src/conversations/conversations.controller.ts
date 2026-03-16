@@ -18,6 +18,7 @@ import {
 import { ConversationsService } from './conversations.service';
 import { ChatService } from '../chat/chat.service';
 import { BigQueryService } from '../bigquery/bigquery.service';
+import { TrackingService } from '../tracking/tracking.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
@@ -32,6 +33,7 @@ export class ConversationsController {
     private readonly conversationsService: ConversationsService,
     private readonly chatService: ChatService,
     private readonly bigQueryService: BigQueryService,
+    private readonly trackingService: TrackingService,
   ) {}
 
   @Post()
@@ -125,6 +127,11 @@ export class ConversationsController {
       'assistant',
       aiResult.response,
     );
+
+    // Log chat_message event (fire and forget)
+    this.trackingService
+      .logEvent({ userId: req.user.userId, action: 'chat_message', metadata: { conversationId: id } })
+      .catch(() => {});
 
     // Log trace to BigQuery (fire and forget)
     this.bigQueryService

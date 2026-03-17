@@ -38,8 +38,8 @@ export class ConversationsService {
       .exec();
   }
 
-  async findById(id: string): Promise<ConversationDocument> {
-    const conversation = await this.conversationModel.findById(id).exec();
+  async findById(id: string, userId: string): Promise<ConversationDocument> {
+    const conversation = await this.conversationModel.findOne({ _id: id, userId }).exec();
     if (!conversation) {
       throw new NotFoundException(`Conversation with ID ${id} not found`);
     }
@@ -48,10 +48,11 @@ export class ConversationsService {
 
   async update(
     id: string,
+    userId: string,
     updateConversationDto: UpdateConversationDto,
   ): Promise<ConversationDocument> {
     const updated = await this.conversationModel
-      .findByIdAndUpdate(id, updateConversationDto, { new: true })
+      .findOneAndUpdate({ _id: id, userId }, updateConversationDto, { new: true })
       .exec();
     if (!updated) {
       throw new NotFoundException(`Conversation with ID ${id} not found`);
@@ -59,8 +60,8 @@ export class ConversationsService {
     return updated;
   }
 
-  async remove(id: string): Promise<ConversationDocument> {
-    const deleted = await this.conversationModel.findByIdAndDelete(id).exec();
+  async remove(id: string, userId: string): Promise<ConversationDocument> {
+    const deleted = await this.conversationModel.findOneAndDelete({ _id: id, userId }).exec();
     if (!deleted) {
       throw new NotFoundException(`Conversation with ID ${id} not found`);
     }
@@ -70,10 +71,11 @@ export class ConversationsService {
 
   async addMessage(
     id: string,
+    userId: string,
     role: 'user' | 'assistant',
     content: string,
   ): Promise<ConversationDocument> {
-    const conversation = await this.conversationModel.findById(id).exec();
+    const conversation = await this.conversationModel.findOne({ _id: id, userId }).exec();
     if (!conversation) {
       throw new NotFoundException(`Conversation with ID ${id} not found`);
     }

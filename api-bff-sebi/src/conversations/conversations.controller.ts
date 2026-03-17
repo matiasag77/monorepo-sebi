@@ -59,8 +59,8 @@ export class ConversationsController {
   @ApiOperation({ summary: 'Get a conversation by ID' })
   @ApiResponse({ status: 200, description: 'Conversation found' })
   @ApiResponse({ status: 404, description: 'Conversation not found' })
-  findOne(@Param('id') id: string) {
-    return this.conversationsService.findById(id);
+  findOne(@Request() req, @Param('id') id: string) {
+    return this.conversationsService.findById(id, req.user.userId);
   }
 
   @Put(':id')
@@ -68,18 +68,19 @@ export class ConversationsController {
   @ApiResponse({ status: 200, description: 'Conversation updated successfully' })
   @ApiResponse({ status: 404, description: 'Conversation not found' })
   update(
+    @Request() req,
     @Param('id') id: string,
     @Body() updateConversationDto: UpdateConversationDto,
   ) {
-    return this.conversationsService.update(id, updateConversationDto);
+    return this.conversationsService.update(id, req.user.userId, updateConversationDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a conversation' })
   @ApiResponse({ status: 200, description: 'Conversation deleted successfully' })
   @ApiResponse({ status: 404, description: 'Conversation not found' })
-  remove(@Param('id') id: string) {
-    return this.conversationsService.remove(id);
+  remove(@Request() req, @Param('id') id: string) {
+    return this.conversationsService.remove(id, req.user.userId);
   }
 
   @Post(':id/messages')
@@ -115,8 +116,11 @@ export class ConversationsController {
     @Param('id') id: string,
     @Body() sendMessageDto: SendMessageDto,
   ) {
+    // Verify ownership before adding messages
+    await this.conversationsService.findById(id, req.user.userId);
+
     // Add user message
-    await this.conversationsService.addMessage(id, 'user', sendMessageDto.content);
+    await this.conversationsService.addMessage(id, req.user.userId, 'user', sendMessageDto.content);
 
     // Get AI response
     const aiResult = await this.chatService.sendMessage(sendMessageDto.content);
@@ -124,6 +128,7 @@ export class ConversationsController {
     // Add assistant message
     const conversation = await this.conversationsService.addMessage(
       id,
+      req.user.userId,
       'assistant',
       aiResult.response,
     );

@@ -9,7 +9,6 @@
 # Testing
 /coverage
 
-main.py
 .venv/
 
 

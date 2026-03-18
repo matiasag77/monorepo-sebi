@@ -30,9 +30,13 @@ export class ChatController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async sendMessage(@Body() sendMessageDto: SendMessageDto) {
-    const result = await this.chatService.sendMessage(sendMessageDto.content);
+    const result = await this.chatService.sendMessage(
+      sendMessageDto.content,
+      sendMessageDto.provider,
+    );
     return {
       response: result.response,
+      provider: result.provider,
       conversationId: sendMessageDto.conversationId || null,
     };
   }

@@ -1,24 +1,26 @@
 # main.py
 import os
+import logging
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
-# (Nota: Importaciones especulativas basadas en la estructura estándar de frameworks multi-agente de Google)
 from google_adk import Agent, App, Tool, run_server
 
-# 1. Definimos el esquema de respuesta estricto que espera nuestro frontend React
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ---------- Esquema de respuesta estructurado ----------
 class SebiResponse(BaseModel):
     answer: str = Field(description="Respuesta narrativa o análisis final del agente")
-    context: Optional[str] = Field(description="Supuestos o aclaraciones sobre los datos extraídos")
-    table: Optional[List[Dict[str, str]]] = Field(description="Datos estructurados para renderizar como tabla")
-    proactivo: Optional[str] = Field(description="Sugerencia de próxima acción de negocio")
+    context: Optional[str] = Field(default=None, description="Supuestos o aclaraciones sobre los datos extraídos")
+    table: Optional[List[Dict[str, str]]] = Field(default=None, description="Datos estructurados para renderizar como tabla")
+    proactivo: Optional[str] = Field(default=None, description="Sugerencia de próxima acción de negocio")
 
-# 2. Definimos una Herramienta (Tool) que el agente puede usar
-# En la vida real, esto haría una query a BigQuery o una API interna.
+
+# ---------- Herramientas del agente ----------
 def consultar_ventas_q3(trimestre: str) -> str:
     """Útil para obtener los datos de ventas de un trimestre específico."""
-    # Data simulada para el ejemplo
     return """
-    Ventas Q3: $12.4M. Objetivo: $11.7M. 
+    Ventas Q3: $12.4M. Objetivo: $11.7M.
     Julio: 4.1M (Obj: 3.8M). Agosto: 4.3M (Obj: 4.0M). Septiembre: 4.0M (Obj: 3.9M).
     Solo ventas confirmadas.
     """
@@ -29,27 +31,91 @@ sales_tool = Tool(
     func=consultar_ventas_q3
 )
 
-# 3. Configuramos el Agente de IA
+
+# ---------- Configuración del agente ----------
 sebi_data_agent = Agent(
     name="SebiDataAnalyst",
     instructions="""
-    Eres SEBI, un asistente de datos experto para FORUS. 
+    Eres SEBI, un asistente de datos experto para FORUS.
     Tu objetivo es analizar datos de ventas y entregarlos en el formato JSON estructurado requerido.
     Usa la herramienta 'call_analytics_agent' para obtener la data real antes de responder.
     """,
     tools=[sales_tool],
-    model="gemini-1.5-pro", # El modelo de Google que razona y extrae JSON
-    output_schema=SebiResponse # Forzamos la salida estructurada
+    model="gemini-1.5-pro",
+    output_schema=SebiResponse
 )
 
-# 4. Registramos la aplicación en el ADK
-# Este nombre "data_agent_app" es exactamente el que configuraste en tu .env de Node (ADK_APP_NAME)
+
+# ---------- App ADK ----------
 app = App(
     name="data_agent_app",
     agents=[sebi_data_agent]
 )
 
-# 5. Iniciamos el servidor del ADK (Expondrá los endpoints REST/SSE)
+
+# ---------- Modo PubSub ----------
+def run_pubsub_mode():
+    """Ejecuta el agente en modo Pub/Sub, escuchando mensajes de un topic."""
+    from google.cloud import pubsub_v1
+    import json
+
+    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
+    subscription_id = os.environ["PUBSUB_SUBSCRIPTION_ID"]
+    response_topic_id = os.environ.get("PUBSUB_RESPONSE_TOPIC_ID")
+
+    subscriber = pubsub_v1.SubscriberClient()
+    subscription_path = subscriber.subscription_path(project_id, subscription_id)
+
+    publisher = None
+    response_topic_path = None
+    if response_topic_id:
+        publisher = pubsub_v1.PublisherClient()
+        response_topic_path = publisher.topic_path(project_id, response_topic_id)
+
+    logger.info(f"Escuchando mensajes en {subscription_path}...")
+
+    def callback(message):
+        try:
+            data = json.loads(message.data.decode("utf-8"))
+            prompt = data.get("prompt", "")
+            logger.info(f"Mensaje recibido: {prompt[:100]}...")
+
+            # Procesar con el agente ADK
+            response = sebi_data_agent.run(prompt)
+
+            # Publicar respuesta si hay topic de respuesta configurado
+            if publisher and response_topic_path:
+                response_data = json.dumps({
+                    "request_id": data.get("request_id"),
+                    "response": response.model_dump() if hasattr(response, "model_dump") else str(response),
+                }).encode("utf-8")
+                publisher.publish(response_topic_path, response_data)
+                logger.info("Respuesta publicada en topic de respuesta")
+
+            message.ack()
+            logger.info("Mensaje procesado y confirmado")
+        except Exception as e:
+            logger.error(f"Error procesando mensaje: {e}")
+            message.nack()
+
+    streaming_pull = subscriber.subscribe(subscription_path, callback=callback)
+    logger.info(f"Modo Pub/Sub activo. Proyecto: {project_id}")
+
+    try:
+        streaming_pull.result()
+    except KeyboardInterrupt:
+        streaming_pull.cancel()
+        streaming_pull.result()
+        logger.info("Pub/Sub listener detenido")
+
+
+# ---------- Entrypoint ----------
 if __name__ == "__main__":
-    # Arranca en el puerto 8000, escuchando en todas las interfaces para Docker
-    run_server(app, host="0.0.0.0", port=8000)
+    mode = os.environ.get("ADK_MODE", "simple").lower()
+
+    if mode == "pubsub":
+        logger.info("Iniciando en modo Pub/Sub...")
+        run_pubsub_mode()
+    else:
+        logger.info("Iniciando en modo simple (HTTP/SSE)...")
+        run_server(app, host="0.0.0.0", port=8000)

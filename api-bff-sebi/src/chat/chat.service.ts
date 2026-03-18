@@ -88,7 +88,7 @@ export class ChatService {
    */
   private async makeAuthenticatedRequest(
     url: string,
-    options: { method: string; body?: string; timeout?: number },
+    options: { method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'; body?: string; timeout?: number },
   ): Promise<{ status: number; statusText: string; data: string; headers: Record<string, string> }> {
     const client = await this.getAuthClient();
 

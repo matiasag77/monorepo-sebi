@@ -296,7 +296,7 @@ function WelcomeState({
 function ChatPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
 
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
@@ -336,14 +336,15 @@ function ChatPage() {
     }
   }, [searchParams, conversationId])
 
-  // Load suggestions
+  // Load suggestions only once the user is authenticated (token is ready)
   useEffect(() => {
+    if (!isAuthenticated) return
     api
       .getSuggestions()
       .then(setSuggestions)
       .catch(() => setSuggestions([]))
       .finally(() => setLoadingSuggestions(false))
-  }, [])
+  }, [isAuthenticated])
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {

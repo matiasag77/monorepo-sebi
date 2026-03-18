@@ -89,4 +89,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: "jwt",
   },
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+  // Required when running behind a reverse proxy in production
+  trustHost: true,
 })

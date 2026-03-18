@@ -1,8 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-export type AiProvider = 'skelligen' | 'adk';
-
 export interface AdkStructuredResponse {
   answer: string;
   context?: string | null;
@@ -14,7 +12,6 @@ export interface AdkStructuredResponse {
 
 export interface ChatResponse {
   response: string;
-  provider: AiProvider;
   structured?: AdkStructuredResponse;
 }
 
@@ -22,37 +19,18 @@ export interface ChatResponse {
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
 
-  private readonly skellegenUrl: string;
   private readonly adkUrl: string;
-  private readonly defaultProvider: AiProvider;
 
   constructor(private readonly configService: ConfigService) {
-    this.skellegenUrl = this.configService.get<string>(
-      'SKELLIGEN_API_URL',
-      'https://skelligen-api.prod.interno.forus-sistemas.com/api/test-ai',
-    );
-    this.adkUrl = this.configService.get<string>(
-      'ADK_API_URL',
-      'http://service-adk:8000',
-    );
-    this.defaultProvider = this.configService.get<AiProvider>(
-      'AI_PROVIDER',
-      'skelligen',
-    );
+    this.adkUrl = this.configService.get<string>('ADK_API_URL', '');
   }
 
   async sendMessage(
     message: string,
-    provider?: AiProvider,
     userId?: string,
     sessionId?: string,
   ): Promise<ChatResponse> {
-    const activeProvider = provider ?? this.defaultProvider;
-
-    if (activeProvider === 'adk') {
-      return this.sendToAdk(message, userId, sessionId);
-    }
-    return this.sendToSkelligen(message);
+    return this.sendToAdk(message, userId, sessionId);
   }
 
   /**
@@ -224,8 +202,7 @@ export class ChatService {
         );
         return {
           response:
-            'Lo siento, no pude procesar tu consulta con ADK. Por favor, intentá de nuevo más tarde.',
-          provider: 'adk',
+            'Lo siento, no pude procesar tu consulta. Por favor, intentá de nuevo más tarde.',
         };
       }
 
@@ -237,7 +214,6 @@ export class ChatService {
 
       return {
         response: structured.answer,
-        provider: 'adk',
         structured,
       };
     } catch (error) {
@@ -245,82 +221,17 @@ export class ChatService {
         this.logger.error('ADK API request timed out after 300s');
         return {
           response:
-            'Lo siento, la consulta al agente ADK tardó demasiado. Por favor, intentá de nuevo más tarde.',
-          provider: 'adk',
+            'Lo siento, la consulta tardó demasiado. Por favor, intentá de nuevo más tarde.',
         };
       }
       this.logger.error(`Error calling ADK API: ${error}`);
       return {
         response:
-          'Lo siento, ocurrió un error al conectar con el servicio ADK. Por favor, intentá de nuevo más tarde.',
-        provider: 'adk',
-      };
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  private async sendToSkelligen(
-    message: string,
-  ): Promise<ChatResponse> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
-
-    try {
-      const res = await fetch(this.skellegenUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ prompt: message }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok) {
-        this.logger.error(
-          `Skelligen API responded with status ${res.status}: ${res.statusText}`,
-        );
-        return {
-          response:
-            'Lo siento, no pude procesar tu consulta en este momento. Por favor, intentá de nuevo más tarde.',
-          provider: 'skelligen',
-        };
-      }
-
-      const data = await res.json();
-      this.logger.debug('Skelligen API response received');
-      const rawResponse =
-        data?.data?.response ?? data.response ?? data.message ?? JSON.stringify(data);
-      const response = this.sanitizeResponse(rawResponse);
-      return { response, provider: 'skelligen' };
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        this.logger.error('Skelligen API request timed out after 30s');
-        return {
-          response:
-            'Lo siento, la consulta tardó demasiado. Por favor, intentá de nuevo más tarde.',
-          provider: 'skelligen',
-        };
-      }
-      this.logger.error(`Error calling Skelligen API: ${error}`);
-      return {
-        response:
           'Lo siento, ocurrió un error al conectar con el servicio de IA. Por favor, intentá de nuevo más tarde.',
-        provider: 'skelligen',
       };
     } finally {
       clearTimeout(timeout);
     }
-  }
-
-  private sanitizeResponse(text: string): string {
-    return text
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
-      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-      .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
-      .replace(/<embed\b[^>]*>/gi, '');
   }
 
   getSuggestedMessages(): string[] {

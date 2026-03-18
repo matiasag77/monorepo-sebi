@@ -23,11 +23,11 @@ export class BigQueryService implements OnModuleInit {
   constructor(private configService: ConfigService) {
     this.datasetId = this.configService.get<string>(
       'BIGQUERY_DATASET',
-      'sebi_chatbot',
+      'test_logs',
     );
     this.tableId = this.configService.get<string>(
       'BIGQUERY_TABLE',
-      'conversation_traces',
+      'web_test',
     );
     this.enabled = !!this.configService.get<string>('BIGQUERY_PROJECT_ID');
   }
@@ -41,13 +41,18 @@ export class BigQueryService implements OnModuleInit {
     }
 
     const projectId = this.configService.get<string>('BIGQUERY_PROJECT_ID');
-    const keyFilename = this.configService.get<string>(
-      'BIGQUERY_KEY_FILE',
-    );
+    const keyFilename = this.configService.get<string>('BIGQUERY_KEY_FILE');
+    const credentialsJson = this.configService.get<string>('BIGQUERY_CREDENTIALS_JSON');
 
     const options: ConstructorParameters<typeof BigQuery>[0] = { projectId };
     if (keyFilename) {
       options.keyFilename = keyFilename;
+    } else if (credentialsJson) {
+      try {
+        options.credentials = JSON.parse(credentialsJson);
+      } catch {
+        this.logger.error('BIGQUERY_CREDENTIALS_JSON is not valid JSON. Falling back to ADC.');
+      }
     }
 
     this.bigquery = new BigQuery(options);
@@ -75,13 +80,13 @@ export class BigQueryService implements OnModuleInit {
         await this.bigquery.dataset(this.datasetId).createTable(this.tableId, {
           schema: {
             fields: [
-              { name: 'user_id', type: 'STRING', mode: 'REQUIRED' },
-              { name: 'user_email', type: 'STRING', mode: 'REQUIRED' },
-              { name: 'user_name', type: 'STRING', mode: 'REQUIRED' },
-              { name: 'conversation_id', type: 'STRING', mode: 'REQUIRED' },
-              { name: 'question', type: 'STRING', mode: 'REQUIRED' },
-              { name: 'answer', type: 'STRING', mode: 'REQUIRED' },
-              { name: 'timestamp', type: 'TIMESTAMP', mode: 'REQUIRED' },
+              { name: 'user_id', type: 'STRING', mode: 'NULLABLE' },
+              { name: 'user_email', type: 'STRING', mode: 'NULLABLE' },
+              { name: 'user_name', type: 'STRING', mode: 'NULLABLE' },
+              { name: 'conversation_id', type: 'STRING', mode: 'NULLABLE' },
+              { name: 'question', type: 'STRING', mode: 'NULLABLE' },
+              { name: 'answer', type: 'STRING', mode: 'NULLABLE' },
+              { name: 'timestamp', type: 'TIMESTAMP', mode: 'NULLABLE' },
             ],
           },
         });

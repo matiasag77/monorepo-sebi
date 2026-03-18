@@ -122,8 +122,13 @@ export class ConversationsController {
     // Add user message
     await this.conversationsService.addMessage(id, req.user.userId, 'user', sendMessageDto.content);
 
-    // Get AI response
-    const aiResult = await this.chatService.sendMessage(sendMessageDto.content);
+    // Get AI response (pass userId and conversationId as sessionId for ADK)
+    const aiResult = await this.chatService.sendMessage(
+      sendMessageDto.content,
+      sendMessageDto.provider,
+      req.user.userId,
+      id, // use conversationId as ADK sessionId for continuity
+    );
 
     // Add assistant message
     const conversation = await this.conversationsService.addMessage(
@@ -156,6 +161,16 @@ export class ConversationsController {
       userMessage: messages[messages.length - 2],
       assistantMessage: messages[messages.length - 1],
       conversation,
+      // Structured ADK data for rich frontend rendering
+      ...(aiResult.structured
+        ? {
+            table: aiResult.structured.table,
+            chart: aiResult.structured.chart,
+            proactivo: aiResult.structured.proactivo,
+            context: aiResult.structured.context,
+            intermediateSteps: aiResult.structured.intermediateSteps,
+          }
+        : {}),
     };
   }
 }

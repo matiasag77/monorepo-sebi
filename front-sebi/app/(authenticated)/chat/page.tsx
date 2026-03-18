@@ -129,6 +129,65 @@ function MarkdownContent({ content }: { content: string }) {
   )
 }
 
+function DynamicTable({ data }: { data: Record<string, unknown>[] }) {
+  if (!data || data.length === 0) return null
+  const headers = Object.keys(data[0])
+
+  return (
+    <div className="overflow-x-auto my-3 rounded-lg border border-zinc-700">
+      <table className="min-w-full text-xs">
+        <thead>
+          <tr className="bg-zinc-800/80">
+            {headers.map((h) => (
+              <th key={h} className="px-3 py-2 text-left text-zinc-300 font-semibold border-b border-zinc-700 capitalize">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row, i) => (
+            <tr key={i} className={i % 2 === 0 ? "bg-zinc-900/40" : "bg-zinc-900/20"}>
+              {headers.map((h) => (
+                <td key={h} className="px-3 py-2 text-zinc-300 border-b border-zinc-800">
+                  {Array.isArray(row[h])
+                    ? (row[h] as string[]).join(", ")
+                    : String(row[h] ?? "")}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function IntermediateSteps({ steps }: { steps: string[] }) {
+  if (!steps || steps.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1 mb-2">
+      {steps.map((step, i) => (
+        <span
+          key={i}
+          className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20"
+        >
+          {step}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function ProactiveSuggestion({ text }: { text: string }) {
+  return (
+    <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border-l-2 border-amber-500/60 text-amber-200 text-xs">
+      <span className="font-semibold text-amber-400">Sugerencia: </span>
+      {text}
+    </div>
+  )
+}
+
 function MessageBubble({ message, isUser }: { message: Message; isUser: boolean }) {
   return (
     <div
@@ -157,7 +216,18 @@ function MessageBubble({ message, isUser }: { message: Message; isUser: boolean 
             : "glass text-zinc-200 rounded-tl-md"
         )}
       >
-        {isUser ? message.content : <MarkdownContent content={message.content} />}
+        {isUser ? (
+          message.content
+        ) : (
+          <>
+            {message.intermediateSteps && (
+              <IntermediateSteps steps={message.intermediateSteps} />
+            )}
+            <MarkdownContent content={message.content} />
+            {message.table && <DynamicTable data={message.table} />}
+            {message.proactivo && <ProactiveSuggestion text={message.proactivo} />}
+          </>
+        )}
       </div>
     </div>
   )
@@ -324,6 +394,11 @@ export default function ChatPage() {
         role: "assistant",
         content: response.assistantMessage.content,
         timestamp: response.assistantMessage.timestamp,
+        table: response.table,
+        chart: response.chart,
+        proactivo: response.proactivo,
+        context: response.context,
+        intermediateSteps: response.intermediateSteps,
       }
       setMessages((prev) => [...prev, assistantMessage])
     } catch {

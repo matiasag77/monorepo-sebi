@@ -38,6 +38,15 @@ export class ChatController {
       response: result.response,
       provider: result.provider,
       conversationId: sendMessageDto.conversationId || null,
+      ...(result.structured
+        ? {
+            table: result.structured.table,
+            chart: result.structured.chart,
+            proactivo: result.structured.proactivo,
+            context: result.structured.context,
+            intermediateSteps: result.structured.intermediateSteps,
+          }
+        : {}),
     };
   }
 

@@ -34,14 +34,15 @@ sales_tool = Tool(
 
 # ---------- Configuración del agente ----------
 sebi_data_agent = Agent(
-    name="SebiDataAnalyst",
+    name="orquestador",
     instructions="""
     Eres SEBI, un asistente de datos experto para FORUS.
     Tu objetivo es analizar datos de ventas y entregarlos en el formato JSON estructurado requerido.
     Usa la herramienta 'call_analytics_agent' para obtener la data real antes de responder.
+    Siempre responde en español.
     """,
     tools=[sales_tool],
-    model="gemini-1.5-pro",
+    model=os.environ.get("ADK_MODEL", "gemini-2.5-flash"),
     output_schema=SebiResponse
 )
 

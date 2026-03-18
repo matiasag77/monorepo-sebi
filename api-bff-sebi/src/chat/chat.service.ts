@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { GoogleAuth, type IdTokenClient } from 'google-auth-library';
 
 export interface AdkStructuredResponse {
   answer: string;
@@ -20,14 +21,31 @@ export class ChatService {
   private readonly logger = new Logger(ChatService.name);
 
   private readonly adkUrl: string;
+  private authClient: IdTokenClient | null = null;
 
   constructor(private readonly configService: ConfigService) {
     this.adkUrl = this.configService.get<string>('ADK_API_URL', '');
     this.logger.log(`ChatService initialized - ADK_API_URL configured: ${this.adkUrl ? 'YES' : 'NO (EMPTY!)'}`);
     if (this.adkUrl) {
       this.logger.log(`ADK_API_URL: ${this.adkUrl}`);
+      this.initAuthClient();
     } else {
       this.logger.error('ADK_API_URL is empty or not configured! AI service will not work.');
+    }
+  }
+
+  /**
+   * Inicializa el cliente de autenticación de Google para Cloud Run.
+   * Se cachea para reutilizar y refrescar tokens automáticamente.
+   */
+  private async initAuthClient(): Promise<void> {
+    try {
+      const auth = new GoogleAuth();
+      this.authClient = await auth.getIdTokenClient(this.adkUrl);
+      this.logger.log('Google Auth client initialized successfully for Cloud Run');
+    } catch (error) {
+      this.logger.warn(`Could not initialize Google Auth client (expected in local dev): ${error instanceof Error ? error.message : error}`);
+      this.authClient = null;
     }
   }
 
@@ -45,30 +63,101 @@ export class ChatService {
   }
 
   /**
-   * Genera un Google Identity Token para autenticarse contra Cloud Run.
-   * En Cloud Run, la Service Account del backend tiene permiso Cloud Run Invoker.
-   * En local, devuelve un token placeholder.
+   * Ensures the auth client is ready. Retries initialization if needed.
    */
-  private async getIdentityToken(targetAudience: string): Promise<string> {
-    this.logger.log(`getIdentityToken - targetAudience=${targetAudience}`);
+  private async getAuthClient(): Promise<IdTokenClient | null> {
+    if (this.authClient) {
+      return this.authClient;
+    }
+    // Retry initialization in case it failed during constructor
+    this.logger.log('Auth client not ready, retrying initialization...');
     try {
-      const { GoogleAuth } = await import('google-auth-library');
       const auth = new GoogleAuth();
-      const client = await auth.getIdTokenClient(targetAudience);
-      const headers = await client.getRequestHeaders();
-      const token = headers['Authorization']?.replace('Bearer ', '');
-      if (token) {
-        this.logger.log(`Identity token generated successfully (length=${token.length})`);
-        return token;
-      }
-      throw new Error('No token in headers');
+      this.authClient = await auth.getIdTokenClient(this.adkUrl);
+      this.logger.log('Google Auth client initialized on retry');
+      return this.authClient;
     } catch (error) {
-      this.logger.warn(
-        `Could not generate identity token: ${error instanceof Error ? error.message : error}`,
-      );
-      this.logger.warn(`Token error stack: ${error instanceof Error ? error.stack : 'N/A'}`);
-      this.logger.warn('Falling back to LOCAL_DEVELOPMENT_TOKEN');
-      return 'LOCAL_DEVELOPMENT_TOKEN';
+      this.logger.warn(`Auth client retry failed: ${error instanceof Error ? error.message : error}`);
+      return null;
+    }
+  }
+
+  /**
+   * Makes an authenticated request to Cloud Run using google-auth-library.
+   * The client.request() method automatically handles token injection and refresh.
+   */
+  private async makeAuthenticatedRequest(
+    url: string,
+    options: { method: string; body?: string; timeout?: number },
+  ): Promise<{ status: number; statusText: string; data: string; headers: Record<string, string> }> {
+    const client = await this.getAuthClient();
+
+    if (client) {
+      this.logger.log(`Making authenticated request via GoogleAuth client - ${options.method} ${url}`);
+      try {
+        const response = await client.request({
+          url,
+          method: options.method,
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: options.body,
+          timeout: options.timeout,
+        });
+        const data = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+        this.logger.log(`Authenticated request success - status=${response.status}`);
+        return {
+          status: response.status,
+          statusText: String(response.statusText || 'OK'),
+          data,
+          headers: response.headers as Record<string, string>,
+        };
+      } catch (error: unknown) {
+        // google-auth-library throws GaxiosError with response info
+        const gaxiosError = error as { response?: { status: number; statusText: string; data: unknown }; message?: string; stack?: string };
+        if (gaxiosError.response) {
+          const errorData = typeof gaxiosError.response.data === 'string'
+            ? gaxiosError.response.data
+            : JSON.stringify(gaxiosError.response.data);
+          this.logger.error(`Authenticated request failed - status=${gaxiosError.response.status}, body=${errorData.substring(0, 500)}`);
+          return {
+            status: gaxiosError.response.status,
+            statusText: String(gaxiosError.response.statusText || 'Error'),
+            data: errorData,
+            headers: {},
+          };
+        }
+        // Network-level error (DNS, connection refused, etc.)
+        this.logger.error(`Authenticated request network error: ${gaxiosError.message}`);
+        this.logger.error(`Stack: ${gaxiosError.stack || 'N/A'}`);
+        throw error;
+      }
+    }
+
+    // Fallback: no auth client (local development)
+    this.logger.warn(`No Google Auth client available - making unauthenticated request to ${url}`);
+    const controller = new AbortController();
+    const timeoutId = options.timeout ? setTimeout(() => controller.abort(), options.timeout) : null;
+    try {
+      const res = await fetch(url, {
+        method: options.method,
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: options.body,
+        signal: controller.signal,
+      });
+      const data = await res.text();
+      return {
+        status: res.status,
+        statusText: res.statusText,
+        data,
+        headers: Object.fromEntries(res.headers.entries()),
+      };
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
     }
   }
 
@@ -76,30 +165,21 @@ export class ChatService {
    * Inicializa una sesión en el ADK agent.
    */
   private async initAdkSession(
-    token: string,
     userId: string,
     sessionId: string,
   ): Promise<void> {
     const sessionUrl = `${this.adkUrl}/apps/data_agent_app/users/${userId}/sessions/${sessionId}`;
-    this.logger.log(`initAdkSession - URL: ${sessionUrl}`);
-    this.logger.log(`initAdkSession - userId=${userId}, sessionId=${sessionId}, tokenType=${token === 'LOCAL_DEVELOPMENT_TOKEN' ? 'LOCAL' : 'GOOGLE_ID_TOKEN'}`);
+    this.logger.log(`initAdkSession - URL: ${sessionUrl}, userId=${userId}, sessionId=${sessionId}`);
     try {
-      const res = await fetch(sessionUrl, {
+      const res = await this.makeAuthenticatedRequest(sessionUrl, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ preferred_language: 'Spanish' }),
       });
-      const responseBody = await res.text();
-      this.logger.log(
-        `ADK session init response: status=${res.status}, statusText=${res.statusText}`,
-      );
-      if (!res.ok) {
-        this.logger.warn(`ADK session init non-OK response body: ${responseBody.substring(0, 500)}`);
+      this.logger.log(`ADK session init response: status=${res.status}, statusText=${res.statusText}`);
+      if (res.status >= 400) {
+        this.logger.warn(`ADK session init non-OK response body: ${res.data.substring(0, 500)}`);
       } else {
-        this.logger.log(`ADK session init success - body length=${responseBody.length}`);
+        this.logger.log(`ADK session init success - body length=${res.data.length}`);
       }
     } catch (error) {
       this.logger.error(`ADK session init FAILED: ${error instanceof Error ? error.message : error}`);
@@ -187,9 +267,6 @@ export class ChatService {
     userId?: string,
     sessionId?: string,
   ): Promise<ChatResponse> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 300000); // 5 min for ADK
-
     const effectiveUserId = userId ?? 'sebi-user';
     const effectiveSessionId = sessionId ?? `session-${Date.now()}`;
 
@@ -197,6 +274,7 @@ export class ChatService {
     this.logger.log(`ADK URL base: ${this.adkUrl || '(EMPTY!)'}`);
     this.logger.log(`User: ${effectiveUserId}, Session: ${effectiveSessionId}`);
     this.logger.log(`Message (first 200 chars): ${message?.substring(0, 200)}`);
+    this.logger.log(`Auth client available: ${!!this.authClient}`);
 
     if (!this.adkUrl) {
       this.logger.error('ADK_API_URL is empty! Cannot proceed with AI request.');
@@ -207,29 +285,11 @@ export class ChatService {
     }
 
     try {
-      // 1. Get identity token for Cloud Run authentication
-      this.logger.log('Step 1: Getting identity token...');
-      const token = await this.getIdentityToken(this.adkUrl);
-      this.logger.log(`Token obtained: type=${token === 'LOCAL_DEVELOPMENT_TOKEN' ? 'LOCAL_DEV' : 'GOOGLE_ID'}`);
+      // 1. Initialize ADK session
+      this.logger.log('Step 1: Initializing ADK session...');
+      await this.initAdkSession(effectiveUserId, effectiveSessionId);
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      };
-
-      // Only add Authorization header if we have a real token
-      if (token !== 'LOCAL_DEVELOPMENT_TOKEN') {
-        headers['Authorization'] = `Bearer ${token}`;
-        this.logger.log('Authorization header added with Google ID token');
-      } else {
-        this.logger.warn('Using LOCAL_DEVELOPMENT_TOKEN - no Authorization header will be sent');
-      }
-
-      // 2. Initialize ADK session
-      this.logger.log('Step 2: Initializing ADK session...');
-      await this.initAdkSession(token, effectiveUserId, effectiveSessionId);
-
-      // 3. Send message to ADK via /run_sse
+      // 2. Send message to ADK via /run_sse
       const runUrl = `${this.adkUrl}/run_sse`;
       const payload = {
         app_name: 'data_agent_app',
@@ -242,37 +302,31 @@ export class ChatService {
         streaming: false,
       };
 
-      this.logger.log(`Step 3: Sending to ADK - URL: ${runUrl}`);
-      this.logger.log(`Step 3: Payload: ${JSON.stringify(payload).substring(0, 500)}`);
-      this.logger.log(`Step 3: Headers: ${JSON.stringify(Object.keys(headers))}`);
+      this.logger.log(`Step 2: Sending to ADK - URL: ${runUrl}`);
+      this.logger.log(`Step 2: Payload: ${JSON.stringify(payload).substring(0, 500)}`);
 
       const fetchStartTime = Date.now();
-      const res = await fetch(runUrl, {
+      const res = await this.makeAuthenticatedRequest(runUrl, {
         method: 'POST',
-        headers,
         body: JSON.stringify(payload),
-        signal: controller.signal,
+        timeout: 300000, // 5 min for ADK
       });
       const fetchDuration = Date.now() - fetchStartTime;
 
       this.logger.log(`ADK response received in ${fetchDuration}ms - status=${res.status}, statusText=${res.statusText}`);
-      this.logger.log(`ADK response headers: content-type=${res.headers.get('content-type')}, content-length=${res.headers.get('content-length')}`);
 
-      if (!res.ok) {
-        const errorBody = await res.text();
-        this.logger.error(
-          `ADK API error response - status=${res.status}, statusText=${res.statusText}`,
-        );
-        this.logger.error(`ADK API error body (first 1000 chars): ${errorBody.substring(0, 1000)}`);
+      if (res.status >= 400) {
+        this.logger.error(`ADK API error response - status=${res.status}, statusText=${res.statusText}`);
+        this.logger.error(`ADK API error body (first 1000 chars): ${res.data.substring(0, 1000)}`);
         return {
           response:
             'Lo siento, no pude procesar tu consulta. Por favor, intentá de nuevo más tarde.',
         };
       }
 
-      // 4. Parse SSE response
-      const responseText = await res.text();
-      this.logger.log(`Step 4: ADK SSE response received - length=${responseText.length}`);
+      // 3. Parse SSE response
+      const responseText = res.data;
+      this.logger.log(`Step 3: ADK SSE response received - length=${responseText.length}`);
       this.logger.log(`ADK SSE response (first 500 chars): ${responseText.substring(0, 500)}`);
 
       const structured = this.parseAdkSseResponse(responseText);
@@ -303,8 +357,6 @@ export class ChatService {
         response:
           'Lo siento, ocurrió un error al conectar con el servicio de IA. Por favor, intentá de nuevo más tarde.',
       };
-    } finally {
-      clearTimeout(timeout);
     }
   }
 

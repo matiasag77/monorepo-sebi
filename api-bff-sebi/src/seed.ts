@@ -28,8 +28,17 @@ async function seed() {
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB');
 
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    const adminName = process.env.ADMIN_NAME || 'Admin';
+
+    if (!adminEmail || !adminPassword) {
+      console.error('ADMIN_EMAIL and ADMIN_PASSWORD environment variables are required for seeding.');
+      process.exit(1);
+    }
+
     // Check if admin already exists
-    const existingAdmin = await User.findOne({ email: 'admin@sebi.com' });
+    const existingAdmin = await User.findOne({ email: adminEmail });
     if (existingAdmin) {
       console.log('Admin user already exists. Skipping seed.');
       await mongoose.disconnect();
@@ -37,13 +46,13 @@ async function seed() {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash('Admin123!', 10);
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
     // Create admin user
     const admin = new User({
-      email: 'admin@sebi.com',
+      email: adminEmail,
       password: hashedPassword,
-      name: 'Admin',
+      name: adminName,
       role: 'admin',
       provider: 'local',
       isActive: true,
@@ -51,10 +60,7 @@ async function seed() {
     });
 
     await admin.save();
-    console.log('Default admin user created successfully:');
-    console.log('  Email: admin@sebi.com');
-    console.log('  Password: Admin123!');
-    console.log('  Role: admin');
+    console.log('Default admin user created successfully.');
 
     await mongoose.disconnect();
     console.log('Disconnected from MongoDB. Seed complete.');

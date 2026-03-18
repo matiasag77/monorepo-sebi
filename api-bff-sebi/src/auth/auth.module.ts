@@ -15,9 +15,15 @@ import { LocalStrategy } from './strategies/local.strategy';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET', 'sebi-jwt-secret-key-2024'),
+        secret: (() => {
+          const secret = configService.get<string>('JWT_SECRET');
+          if (!secret) {
+            throw new Error('JWT_SECRET environment variable is required');
+          }
+          return secret;
+        })(),
         signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRATION', '7d') as any,
+          expiresIn: configService.get<string>('JWT_EXPIRATION', '2h') as any,
         },
       }),
       inject: [ConfigService],

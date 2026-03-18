@@ -337,26 +337,26 @@ Se usa `console.log` en lugar de un logger estructurado que facilite auditoría 
 
 | # | Control | Estado | Prioridad |
 |---|---------|--------|-----------|
-| 1 | Rotar service account key expuesta | ❌ Pendiente | CRÍTICO |
-| 2 | Eliminar JWT secret hardcodeado | ❌ Pendiente | CRÍTICO |
-| 3 | Eliminar credenciales admin del código | ❌ Pendiente | CRÍTICO |
-| 4 | Corregir IDOR en conversaciones | ❌ Pendiente | CRÍTICO |
-| 5 | Proteger/deshabilitar Swagger en producción | ❌ Pendiente | CRÍTICO |
-| 6 | Agregar autenticación a API de IA | ❌ Pendiente | CRÍTICO |
-| 7 | Implementar rate limiting | ❌ Pendiente | ALTO |
-| 8 | Agregar CSP y security headers | ❌ Pendiente | ALTO |
-| 9 | Sanitizar respuestas de IA | ❌ Pendiente | ALTO |
-| 10 | Eliminar console.log de datos | ❌ Pendiente | ALTO |
-| 11 | Restringir registro público | ❌ Pendiente | ALTO |
-| 12 | Configurar auth en MongoDB | ❌ Pendiente | ALTO |
-| 13 | Auditar acciones admin | ❌ Pendiente | ALTO |
-| 14 | Reducir expiración JWT | ❌ Pendiente | MEDIO |
-| 15 | Cifrar datos en reposo | ❌ Pendiente | MEDIO |
-| 16 | Agregar @MaxLength a mensajes | ❌ Pendiente | MEDIO |
-| 17 | Agregar timeout a llamadas IA | ❌ Pendiente | MEDIO |
-| 18 | Migrar secretos a Secret Manager | ❌ Pendiente | MEDIO |
-| 19 | Configurar VPC privada | ❌ Pendiente | MEDIO |
-| 20 | Implementar guardrails de IA | ❌ Pendiente | MEDIO |
+| 1 | Rotar service account key expuesta | ❌ Pendiente (requiere acción en GCP IAM) | CRÍTICO |
+| 2 | Eliminar JWT secret hardcodeado | ✅ Corregido — se lanza error si JWT_SECRET no está definido | CRÍTICO |
+| 3 | Eliminar credenciales admin del código | ✅ Corregido — seed.ts usa variables de entorno (ADMIN_EMAIL, ADMIN_PASSWORD) | CRÍTICO |
+| 4 | Corregir IDOR en conversaciones | ✅ Corregido — todos los endpoints validan ownership con userId | CRÍTICO |
+| 5 | Proteger/deshabilitar Swagger en producción | ✅ Corregido — Swagger deshabilitado cuando NODE_ENV=production | CRÍTICO |
+| 6 | Agregar autenticación a API de IA | ❌ Pendiente (requiere coordinación con equipo de API Skelligen) | CRÍTICO |
+| 7 | Implementar rate limiting | ✅ Corregido — @nestjs/throttler configurado (20 req/min, 100 req/10min) | ALTO |
+| 8 | Agregar CSP y security headers | ✅ Corregido — CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy | ALTO |
+| 9 | Sanitizar respuestas de IA | ✅ Corregido — se eliminan scripts, iframes, event handlers de respuestas | ALTO |
+| 10 | Eliminar console.log de datos | ✅ Corregido — reemplazado por Logger de NestJS con nivel debug | ALTO |
+| 11 | Restringir registro público | ❌ Pendiente (requiere decisión de negocio sobre política de registro) | ALTO |
+| 12 | Configurar auth en MongoDB | ❌ Pendiente (requiere configuración de infraestructura) | ALTO |
+| 13 | Auditar acciones admin | ❌ Pendiente (requiere definición de eventos a auditar) | ALTO |
+| 14 | Reducir expiración JWT | ✅ Corregido — reducido de 7d a 2h | MEDIO |
+| 15 | Cifrar datos en reposo | ❌ Pendiente (requiere configuración de MongoDB Atlas o cifrado a nivel app) | MEDIO |
+| 16 | Agregar @MaxLength a mensajes | ✅ Corregido — @MaxLength(5000) aplicado al DTO | MEDIO |
+| 17 | Agregar timeout a llamadas IA | ✅ Corregido — AbortController con timeout de 30s | MEDIO |
+| 18 | Migrar secretos a Secret Manager | ❌ Pendiente (requiere configuración de GCP Secret Manager) | MEDIO |
+| 19 | Configurar VPC privada | ❌ Pendiente (requiere configuración de infraestructura GCP) | MEDIO |
+| 20 | Implementar guardrails de IA | ❌ Pendiente (requiere configuración en agente ADK) | MEDIO |
 
 ---
 

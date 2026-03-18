@@ -7,6 +7,9 @@ export class ChatService {
     'https://skelligen-api.prod.interno.forus-sistemas.com/api/test-ai';
 
   async sendMessage(message: string): Promise<{ response: string }> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
     try {
       const res = await fetch(this.aiApiUrl, {
         method: 'POST',
@@ -15,6 +18,7 @@ export class ChatService {
           Accept: 'application/json',
         },
         body: JSON.stringify({ prompt: message }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
@@ -28,17 +32,36 @@ export class ChatService {
       }
 
       const data = await res.json();
-      console.log(data);
-      // return { response: data.response ?? data.message ?? JSON.stringify(data) };
-      return { response: data?.data?.response ?? data.response ?? data.message ?? JSON.stringify(data) };
+      this.logger.debug('AI API response received');
+      const rawResponse = data?.data?.response ?? data.response ?? data.message ?? JSON.stringify(data);
+      const response = this.sanitizeResponse(rawResponse);
+      return { response };
 
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        this.logger.error('AI API request timed out after 30s');
+        return {
+          response:
+            'Lo siento, la consulta tardó demasiado. Por favor, intentá de nuevo más tarde.',
+        };
+      }
       this.logger.error(`Error calling AI API: ${error}`);
       return {
         response:
           'Lo siento, ocurrió un error al conectar con el servicio de IA. Por favor, intentá de nuevo más tarde.',
       };
+    } finally {
+      clearTimeout(timeout);
     }
+  }
+
+  private sanitizeResponse(text: string): string {
+    return text
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+      .replace(/<embed\b[^>]*>/gi, '');
   }
 
   getSuggestedMessages(): string[] {

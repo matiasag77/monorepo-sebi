@@ -1,0 +1,43 @@
+steps:
+  # Build de la imagen Docker
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/sebi-repo/api-bff-sebi:${SHORT_SHA}"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/sebi-repo/api-bff-sebi:latest"
+      - "./api-bff-sebi"
+
+  # Push a Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "--all-tags"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/sebi-repo/api-bff-sebi"
+
+  # Deploy a Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "sebi-api-bff"
+      - "--image"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/sebi-repo/api-bff-sebi:${SHORT_SHA}"
+      - "--region"
+      - "${_REGION}"
+      - "--service-account"
+      - "${_SERVICE_ACCOUNT}"
+      - "--quiet"
+
+images:
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/sebi-repo/api-bff-sebi:${SHORT_SHA}"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/sebi-repo/api-bff-sebi:latest"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGION: "us-central1"
+  _SERVICE_ACCOUNT: ""

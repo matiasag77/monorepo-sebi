@@ -5,6 +5,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ChatService } from './chat.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -49,6 +50,7 @@ export class ChatController {
   }
 
   @Get('suggestions')
+  @SkipThrottle()
   @ApiOperation({ summary: 'Get suggested messages for the chatbot' })
   @ApiResponse({
     status: 200,

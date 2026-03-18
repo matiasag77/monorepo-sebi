@@ -19,12 +19,12 @@ import { BigQueryModule } from './bigquery/bigquery.module';
       {
         name: 'short',
         ttl: 60000,
-        limit: 20,
+        limit: 60,
       },
       {
         name: 'long',
         ttl: 600000,
-        limit: 100,
+        limit: 300,
       },
     ]),
     MongooseModule.forRootAsync({

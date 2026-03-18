@@ -122,12 +122,19 @@ export async function deleteConversation(id: string): Promise<void> {
 }
 
 // Chat
+export interface SendMessageResponse {
+  assistantMessage: { content: string; timestamp: string; role: string }
+  table?: Record<string, unknown>[] | null
+  chart?: Record<string, unknown> | null
+  proactivo?: string | null
+  context?: string | null
+  intermediateSteps?: string[]
+}
+
 export async function sendMessage(
   conversationId: string,
   message: string
-): Promise<{
-  assistantMessage: { content: string; timestamp: string; role: string }
-}> {
+): Promise<SendMessageResponse> {
   return request(`/conversations/${conversationId}/messages`, {
     method: "POST",
     body: JSON.stringify({ content: message }),

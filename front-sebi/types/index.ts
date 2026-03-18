@@ -16,6 +16,11 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  table?: Record<string, unknown>[] | null;
+  chart?: Record<string, unknown> | null;
+  proactivo?: string | null;
+  context?: string | null;
+  intermediateSteps?: string[];
 }
 
 export interface Conversation {

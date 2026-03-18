@@ -8,6 +8,7 @@ import {
   Param,
   UseGuards,
   Request,
+  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -29,6 +30,8 @@ import { SendMessageDto } from '../chat/dto/send-message.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('conversations')
 export class ConversationsController {
+  private readonly logger = new Logger(ConversationsController.name);
+
   constructor(
     private readonly conversationsService: ConversationsService,
     private readonly chatService: ChatService,
@@ -116,60 +119,84 @@ export class ConversationsController {
     @Param('id') id: string,
     @Body() sendMessageDto: SendMessageDto,
   ) {
-    // Verify ownership before adding messages
-    await this.conversationsService.findById(id, req.user.userId);
+    const startTime = Date.now();
+    this.logger.log(`POST /api/conversations/${id}/messages - userId=${req.user.userId}, contentLength=${sendMessageDto.content?.length}`);
 
-    // Add user message
-    await this.conversationsService.addMessage(id, req.user.userId, 'user', sendMessageDto.content);
+    try {
+      // Verify ownership before adding messages
+      this.logger.log(`Step 1: Verifying conversation ownership...`);
+      await this.conversationsService.findById(id, req.user.userId);
+      this.logger.log(`Step 1: Ownership verified`);
 
-    // Get AI response (pass userId and conversationId as sessionId for ADK)
-    const aiResult = await this.chatService.sendMessage(
-      sendMessageDto.content,
-      req.user.userId,
-      id, // use conversationId as ADK sessionId for continuity
-    );
+      // Add user message
+      this.logger.log(`Step 2: Adding user message to conversation...`);
+      await this.conversationsService.addMessage(id, req.user.userId, 'user', sendMessageDto.content);
+      this.logger.log(`Step 2: User message added`);
 
-    // Add assistant message
-    const conversation = await this.conversationsService.addMessage(
-      id,
-      req.user.userId,
-      'assistant',
-      aiResult.response,
-    );
+      // Get AI response (pass userId and conversationId as sessionId for ADK)
+      this.logger.log(`Step 3: Calling ChatService.sendMessage...`);
+      const aiStartTime = Date.now();
+      const aiResult = await this.chatService.sendMessage(
+        sendMessageDto.content,
+        req.user.userId,
+        id, // use conversationId as ADK sessionId for continuity
+      );
+      const aiDuration = Date.now() - aiStartTime;
+      this.logger.log(`Step 3: AI response received in ${aiDuration}ms - responseLength=${aiResult.response?.length}, hasStructured=${!!aiResult.structured}`);
 
-    // Log chat_message event (fire and forget)
-    this.trackingService
-      .logEvent({ userId: req.user.userId, action: 'chat_message', metadata: { conversationId: id } })
-      .catch(() => {});
+      // Add assistant message
+      this.logger.log(`Step 4: Adding assistant message to conversation...`);
+      const conversation = await this.conversationsService.addMessage(
+        id,
+        req.user.userId,
+        'assistant',
+        aiResult.response,
+      );
+      this.logger.log(`Step 4: Assistant message added`);
 
-    // Log trace to BigQuery (fire and forget)
-    this.bigQueryService
-      .insertConversationTrace({
-        user_id: req.user.userId,
-        user_email: req.user.email,
-        user_name: req.user.name,
-        conversation_id: id,
-        question: sendMessageDto.content,
-        answer: aiResult.response,
-        timestamp: new Date().toISOString(),
-      })
-      .catch(() => {});
+      // Log chat_message event (fire and forget)
+      this.trackingService
+        .logEvent({ userId: req.user.userId, action: 'chat_message', metadata: { conversationId: id } })
+        .catch((err) => this.logger.warn(`Tracking logEvent failed: ${err}`));
 
-    const messages = conversation.messages;
-    return {
-      userMessage: messages[messages.length - 2],
-      assistantMessage: messages[messages.length - 1],
-      conversation,
-      // Structured ADK data for rich frontend rendering
-      ...(aiResult.structured
-        ? {
-            table: aiResult.structured.table,
-            chart: aiResult.structured.chart,
-            proactivo: aiResult.structured.proactivo,
-            context: aiResult.structured.context,
-            intermediateSteps: aiResult.structured.intermediateSteps,
-          }
-        : {}),
-    };
+      // Log trace to BigQuery (fire and forget)
+      this.bigQueryService
+        .insertConversationTrace({
+          user_id: req.user.userId,
+          user_email: req.user.email,
+          user_name: req.user.name,
+          conversation_id: id,
+          question: sendMessageDto.content,
+          answer: aiResult.response,
+          timestamp: new Date().toISOString(),
+        })
+        .catch((err) => this.logger.warn(`BigQuery trace failed: ${err}`));
+
+      const totalDuration = Date.now() - startTime;
+      this.logger.log(`POST /api/conversations/${id}/messages completed in ${totalDuration}ms`);
+
+      const messages = conversation.messages;
+      return {
+        userMessage: messages[messages.length - 2],
+        assistantMessage: messages[messages.length - 1],
+        conversation,
+        // Structured ADK data for rich frontend rendering
+        ...(aiResult.structured
+          ? {
+              table: aiResult.structured.table,
+              chart: aiResult.structured.chart,
+              proactivo: aiResult.structured.proactivo,
+              context: aiResult.structured.context,
+              intermediateSteps: aiResult.structured.intermediateSteps,
+            }
+          : {}),
+      };
+    } catch (error) {
+      const totalDuration = Date.now() - startTime;
+      this.logger.error(`POST /api/conversations/${id}/messages FAILED after ${totalDuration}ms`);
+      this.logger.error(`Error: ${error instanceof Error ? error.message : error}`);
+      this.logger.error(`Stack: ${error instanceof Error ? error.stack : 'N/A'}`);
+      throw error;
+    }
   }
 }

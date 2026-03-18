@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -293,7 +293,7 @@ function WelcomeState({
   )
 }
 
-export default function ChatPage() {
+function ChatPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user } = useAuth()
@@ -555,5 +555,13 @@ export default function ChatPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ChatPageWrapper() {
+  return (
+    <Suspense>
+      <ChatPage />
+    </Suspense>
   )
 }

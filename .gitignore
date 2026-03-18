@@ -93,3 +93,15 @@ pids
 # Compiled output
 dist/
 out/
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/*.tfvars
+!infra/terraform.tfvars.example
+infra/.terraform.lock.hcl
+
+# GCP credentials
+credentials/
+**/sa-key.json

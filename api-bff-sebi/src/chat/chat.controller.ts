@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, Logger } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -14,6 +14,8 @@ import { SendMessageDto } from './dto/send-message.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('chat')
 export class ChatController {
+  private readonly logger = new Logger(ChatController.name);
+
   constructor(private readonly chatService: ChatService) {}
 
   @Post('send')
@@ -30,22 +32,30 @@ export class ChatController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async sendMessage(@Body() sendMessageDto: SendMessageDto) {
-    const result = await this.chatService.sendMessage(
-      sendMessageDto.content,
-    );
-    return {
-      response: result.response,
-      conversationId: sendMessageDto.conversationId || null,
-      ...(result.structured
-        ? {
-            table: result.structured.table,
-            chart: result.structured.chart,
-            proactivo: result.structured.proactivo,
-            context: result.structured.context,
-            intermediateSteps: result.structured.intermediateSteps,
-          }
-        : {}),
-    };
+    this.logger.log(`POST /api/chat/send - content length=${sendMessageDto.content?.length}, conversationId=${sendMessageDto.conversationId || 'none'}`);
+    try {
+      const result = await this.chatService.sendMessage(
+        sendMessageDto.content,
+      );
+      this.logger.log(`POST /api/chat/send - response received, hasStructured=${!!result.structured}`);
+      return {
+        response: result.response,
+        conversationId: sendMessageDto.conversationId || null,
+        ...(result.structured
+          ? {
+              table: result.structured.table,
+              chart: result.structured.chart,
+              proactivo: result.structured.proactivo,
+              context: result.structured.context,
+              intermediateSteps: result.structured.intermediateSteps,
+            }
+          : {}),
+      };
+    } catch (error) {
+      this.logger.error(`POST /api/chat/send - UNHANDLED ERROR: ${error instanceof Error ? error.message : error}`);
+      this.logger.error(`Stack: ${error instanceof Error ? error.stack : 'N/A'}`);
+      throw error;
+    }
   }
 
   @Get('suggestions')

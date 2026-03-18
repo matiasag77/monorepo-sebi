@@ -1,17 +1,51 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+export type AiProvider = 'skelligen' | 'adk';
 
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
-  private readonly aiApiUrl =
-    'https://skelligen-api.prod.interno.forus-sistemas.com/api/test-ai';
 
-  async sendMessage(message: string): Promise<{ response: string }> {
+  private readonly skellegenUrl: string;
+  private readonly adkUrl: string;
+  private readonly defaultProvider: AiProvider;
+
+  constructor(private readonly configService: ConfigService) {
+    this.skellegenUrl = this.configService.get<string>(
+      'SKELLIGEN_API_URL',
+      'https://skelligen-api.prod.interno.forus-sistemas.com/api/test-ai',
+    );
+    this.adkUrl = this.configService.get<string>(
+      'ADK_API_URL',
+      'http://service-adk:8000',
+    );
+    this.defaultProvider = this.configService.get<AiProvider>(
+      'AI_PROVIDER',
+      'skelligen',
+    );
+  }
+
+  async sendMessage(
+    message: string,
+    provider?: AiProvider,
+  ): Promise<{ response: string; provider: AiProvider }> {
+    const activeProvider = provider ?? this.defaultProvider;
+
+    if (activeProvider === 'adk') {
+      return this.sendToAdk(message);
+    }
+    return this.sendToSkelligen(message);
+  }
+
+  private async sendToSkelligen(
+    message: string,
+  ): Promise<{ response: string; provider: AiProvider }> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
 
     try {
-      const res = await fetch(this.aiApiUrl, {
+      const res = await fetch(this.skellegenUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -23,32 +57,99 @@ export class ChatService {
 
       if (!res.ok) {
         this.logger.error(
-          `AI API responded with status ${res.status}: ${res.statusText}`,
+          `Skelligen API responded with status ${res.status}: ${res.statusText}`,
         );
         return {
           response:
             'Lo siento, no pude procesar tu consulta en este momento. Por favor, intentá de nuevo más tarde.',
+          provider: 'skelligen',
         };
       }
 
       const data = await res.json();
-      this.logger.debug('AI API response received');
-      const rawResponse = data?.data?.response ?? data.response ?? data.message ?? JSON.stringify(data);
+      this.logger.debug('Skelligen API response received');
+      const rawResponse =
+        data?.data?.response ?? data.response ?? data.message ?? JSON.stringify(data);
       const response = this.sanitizeResponse(rawResponse);
-      return { response };
-
+      return { response, provider: 'skelligen' };
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        this.logger.error('AI API request timed out after 30s');
+        this.logger.error('Skelligen API request timed out after 30s');
         return {
           response:
             'Lo siento, la consulta tardó demasiado. Por favor, intentá de nuevo más tarde.',
+          provider: 'skelligen',
         };
       }
-      this.logger.error(`Error calling AI API: ${error}`);
+      this.logger.error(`Error calling Skelligen API: ${error}`);
       return {
         response:
           'Lo siento, ocurrió un error al conectar con el servicio de IA. Por favor, intentá de nuevo más tarde.',
+        provider: 'skelligen',
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private async sendToAdk(
+    message: string,
+  ): Promise<{ response: string; provider: AiProvider }> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    try {
+      const res = await fetch(`${this.adkUrl}/run`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          app_name: 'data_agent_app',
+          user_id: 'sebi-user',
+          session_id: `session-${Date.now()}`,
+          new_message: {
+            role: 'user',
+            parts: [{ text: message }],
+          },
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        this.logger.error(
+          `ADK API responded with status ${res.status}: ${res.statusText}`,
+        );
+        return {
+          response:
+            'Lo siento, no pude procesar tu consulta con ADK. Por favor, intentá de nuevo más tarde.',
+          provider: 'adk',
+        };
+      }
+
+      const data = await res.json();
+      this.logger.debug('ADK API response received');
+
+      // ADK devuelve la respuesta del agente en formato estructurado
+      const rawResponse =
+        data?.answer ?? data?.response ?? data?.text ?? JSON.stringify(data);
+      const response = this.sanitizeResponse(rawResponse);
+      return { response, provider: 'adk' };
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        this.logger.error('ADK API request timed out after 30s');
+        return {
+          response:
+            'Lo siento, la consulta al agente ADK tardó demasiado. Por favor, intentá de nuevo más tarde.',
+          provider: 'adk',
+        };
+      }
+      this.logger.error(`Error calling ADK API: ${error}`);
+      return {
+        response:
+          'Lo siento, ocurrió un error al conectar con el servicio ADK. Por favor, intentá de nuevo más tarde.',
+        provider: 'adk',
       };
     } finally {
       clearTimeout(timeout);

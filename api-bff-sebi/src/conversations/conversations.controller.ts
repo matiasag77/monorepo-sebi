@@ -125,7 +125,6 @@ export class ConversationsController {
     // Get AI response (pass userId and conversationId as sessionId for ADK)
     const aiResult = await this.chatService.sendMessage(
       sendMessageDto.content,
-      sendMessageDto.provider,
       req.user.userId,
       id, // use conversationId as ADK sessionId for continuity
     );

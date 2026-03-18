@@ -9,6 +9,8 @@ import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { TrackingService } from '../tracking/tracking.service';
 
+const ALLOWED_EMAIL_DOMAIN = '@forus.cl';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -16,6 +18,14 @@ export class AuthService {
     private jwtService: JwtService,
     private trackingService: TrackingService,
   ) {}
+
+  private validateEmailDomain(email: string): void {
+    if (!email.toLowerCase().endsWith(ALLOWED_EMAIL_DOMAIN)) {
+      throw new ForbiddenException(
+        `Solo se permiten correos con dominio ${ALLOWED_EMAIL_DOMAIN}`,
+      );
+    }
+  }
 
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.usersService.findByEmail(email);
@@ -58,6 +68,8 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
+    this.validateEmailDomain(registerDto.email);
+
     const existingUser = await this.usersService.findByEmail(registerDto.email);
     if (existingUser) {
       throw new ConflictException('Email already registered');
@@ -73,6 +85,8 @@ export class AuthService {
   }
 
   async registerPublic(registerDto: RegisterDto) {
+    this.validateEmailDomain(registerDto.email);
+
     const existingUser = await this.usersService.findByEmail(registerDto.email);
     if (existingUser) {
       throw new ConflictException('Email already registered');
@@ -110,6 +124,8 @@ export class AuthService {
     googleId: string;
     avatar?: string;
   }) {
+    this.validateEmailDomain(googleData.email);
+
     let user = await this.usersService.findByEmail(googleData.email);
     if (!user) {
       user = await this.usersService.create({

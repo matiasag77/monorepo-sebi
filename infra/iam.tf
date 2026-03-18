@@ -6,12 +6,6 @@ resource "google_service_account" "api_sa" {
   display_name = "SEBI API BFF Service Account"
 }
 
-# ADK service account
-resource "google_service_account" "adk_sa" {
-  account_id   = "sebi-adk-sa"
-  display_name = "SEBI ADK Service Account"
-}
-
 # Frontend service account
 resource "google_service_account" "frontend_sa" {
   account_id   = "sebi-frontend-sa"
@@ -44,39 +38,24 @@ resource "google_project_iam_member" "api_secret_accessor" {
   member  = "serviceAccount:${google_service_account.api_sa.email}"
 }
 
-# Permitir a api-bff invocar service-adk (Cloud Run service-to-service)
-resource "google_cloud_run_v2_service_iam_member" "api_invokes_adk" {
-  project  = var.project_id
-  location = var.region
-  name     = google_cloud_run_v2_service.adk.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${google_service_account.api_sa.email}"
+# Permitir a api-bff invocar el Cloud Run del ADK (externo)
+# Cloud Run Invoker: genera identity tokens para autenticarse contra el ADK
+resource "google_project_iam_member" "api_run_invoker" {
+  project = var.project_id
+  role    = "roles/run.invoker"
+  member  = "serviceAccount:${google_service_account.api_sa.email}"
 }
 
-# ─── Roles para ADK ──────────────────────────────────────────────────
-
-resource "google_project_iam_member" "adk_vertex_ai" {
+resource "google_project_iam_member" "api_logs_writer" {
   project = var.project_id
-  role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${google_service_account.adk_sa.email}"
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.api_sa.email}"
 }
 
-resource "google_project_iam_member" "adk_pubsub_subscriber" {
+resource "google_project_iam_member" "api_monitoring_writer" {
   project = var.project_id
-  role    = "roles/pubsub.subscriber"
-  member  = "serviceAccount:${google_service_account.adk_sa.email}"
-}
-
-resource "google_project_iam_member" "adk_pubsub_publisher" {
-  project = var.project_id
-  role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_service_account.adk_sa.email}"
-}
-
-resource "google_project_iam_member" "adk_secret_accessor" {
-  project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.adk_sa.email}"
+  role    = "roles/monitoring.metricWriter"
+  member  = "serviceAccount:${google_service_account.api_sa.email}"
 }
 
 # ─── Roles para Frontend ─────────────────────────────────────────────

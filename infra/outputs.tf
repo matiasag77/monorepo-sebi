@@ -10,11 +10,6 @@ output "api_url" {
   value       = google_cloud_run_v2_service.api.uri
 }
 
-output "adk_url" {
-  description = "URL interna del servicio ADK"
-  value       = google_cloud_run_v2_service.adk.uri
-}
-
 output "artifact_registry" {
   description = "Repositorio de Artifact Registry"
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/sebi-repo"

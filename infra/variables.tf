@@ -53,18 +53,11 @@ variable "admin_password" {
   sensitive   = true
 }
 
-variable "skelligen_api_url" {
-  description = "URL de la API de Skelligen"
-  type        = string
-  default     = "https://skelligen-api.prod.interno.forus-sistemas.com/api/test-ai"
-}
-
 # ─── Configuración de servicios ──────────────────────────────────────
 
-variable "ai_provider" {
-  description = "Proveedor de IA: skelligen o adk"
+variable "adk_api_url" {
+  description = "URL del Cloud Run del ADK (externo)"
   type        = string
-  default     = "skelligen"
 }
 
 variable "admin_email" {
@@ -103,12 +96,6 @@ variable "frontend_max_instances" {
   description = "Máximo de instancias para frontend"
   type        = number
   default     = 5
-}
-
-variable "adk_max_instances" {
-  description = "Máximo de instancias para service-adk"
-  type        = number
-  default     = 3
 }
 
 # ─── GitHub repo (para Cloud Build triggers) ─────────────────────────

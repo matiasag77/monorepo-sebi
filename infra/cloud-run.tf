@@ -2,53 +2,6 @@ data "google_project" "project" {
   project_id = var.project_id
 }
 
-# ─── Cloud Run: service-adk (interno) ─────────────────────────────────
-
-resource "google_cloud_run_v2_service" "adk" {
-  name     = "sebi-adk"
-  location = var.region
-  ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY"
-
-  template {
-    service_account = google_service_account.adk_sa.email
-
-    scaling {
-      min_instance_count = 0
-      max_instance_count = var.adk_max_instances
-    }
-
-    containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/sebi-repo/service-adk:latest"
-
-      ports {
-        container_port = 8000
-      }
-
-      resources {
-        limits = {
-          cpu    = "1"
-          memory = "512Mi"
-        }
-      }
-
-      env {
-        name  = "ADK_MODE"
-        value = "simple"
-      }
-
-      env {
-        name  = "GOOGLE_CLOUD_PROJECT"
-        value = var.project_id
-      }
-    }
-  }
-
-  depends_on = [
-    google_project_service.apis,
-    google_artifact_registry_repository.sebi_repo,
-  ]
-}
-
 # ─── Cloud Run: api-bff-sebi (público) ───────────────────────────────
 
 resource "google_cloud_run_v2_service" "api" {
@@ -95,13 +48,8 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
-        name  = "AI_PROVIDER"
-        value = var.ai_provider
-      }
-
-      env {
         name  = "ADK_API_URL"
-        value = google_cloud_run_v2_service.adk.uri
+        value = var.adk_api_url
       }
 
       env {
@@ -180,16 +128,6 @@ resource "google_cloud_run_v2_service" "api" {
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.secrets["admin-password"].secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      env {
-        name = "SKELLIGEN_API_URL"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["skelligen-api-url"].secret_id
             version = "latest"
           }
         }

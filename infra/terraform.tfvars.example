@@ -11,10 +11,9 @@ nextauth_secret          = "cambiar-por-un-secreto-seguro"
 google_oauth_client_id   = "tu-client-id.apps.googleusercontent.com"
 google_oauth_client_secret = "tu-client-secret"
 admin_password           = "cambiar-por-password-seguro"
-skelligen_api_url        = "https://skelligen-api.prod.interno.forus-sistemas.com/api/test-ai"
 
 # ─── Configuración de servicios ───────────────────────────────────────
-ai_provider      = "skelligen"
+adk_api_url      = "https://sebi-adk-xxxxxxxx.us-central1.run.app"
 admin_email      = "admin@sebi.com"
 bigquery_dataset = "sebi_chatbot"
 bigquery_table   = "conversation_traces"
@@ -23,7 +22,6 @@ jwt_expiration   = "2h"
 # ─── Scaling ──────────────────────────────────────────────────────────
 api_max_instances      = 5
 frontend_max_instances = 5
-adk_max_instances      = 3
 
 # ─── GitHub (para Cloud Build triggers) ───────────────────────────────
 github_owner = "tu-usuario-github"

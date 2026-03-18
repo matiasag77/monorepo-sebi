@@ -32,11 +32,9 @@ export class ChatController {
   async sendMessage(@Body() sendMessageDto: SendMessageDto) {
     const result = await this.chatService.sendMessage(
       sendMessageDto.content,
-      sendMessageDto.provider,
     );
     return {
       response: result.response,
-      provider: result.provider,
       conversationId: sendMessageDto.conversationId || null,
       ...(result.structured
         ? {

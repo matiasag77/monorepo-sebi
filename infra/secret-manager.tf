@@ -9,7 +9,6 @@ locals {
     "google-oauth-client-secret" = var.google_oauth_client_secret
     "mongodb-uri"              = var.mongodb_uri
     "admin-password"           = var.admin_password
-    "skelligen-api-url"        = var.skelligen_api_url
   }
 }
 

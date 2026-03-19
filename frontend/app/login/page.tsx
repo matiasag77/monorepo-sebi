@@ -116,7 +116,7 @@ export default function LoginPage() {
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl text-center">Bienvenido</CardTitle>
             <CardDescription className="text-center">
-              Inicia con Google o ingresá tu email para iniciar sesión
+              Inicia con Google o ingresa tu email para iniciar sesión
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -167,7 +167,7 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Ingresá tu contraseña"
+                    placeholder="Ingresa tu contraseña"
                     className="pl-10 pr-10"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -187,9 +187,6 @@ export default function LoginPage() {
                     )}
                   </button>
                 </div>
-                <p className="text-[11px] text-zinc-500">
-                  Si eres nuevo, se creará una cuenta automáticamente con el email ingresado.
-                </p>
               </div>
 
               <Button

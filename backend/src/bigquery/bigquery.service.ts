@@ -156,15 +156,25 @@ export class BigQueryService implements OnModuleInit {
     }
 
     try {
+      this.logger.log(
+        `Inserting trace for user ${trace.user_email} in conversation ${trace.conversation_id}...`,
+      );
       await this.bigquery
         .dataset(this.datasetId)
         .table(this.tableId)
         .insert([trace]);
-      this.logger.debug(
-        `Trace inserted for user ${trace.user_email} in conversation ${trace.conversation_id}`,
+      this.logger.log(
+        `✓ Trace inserted for user ${trace.user_email} in conversation ${trace.conversation_id}`,
       );
-    } catch (error) {
-      this.logger.error(`Error inserting trace into BigQuery: ${error}`);
+    } catch (error: any) {
+      this.logger.error(`Error inserting trace into BigQuery: ${error?.message || error}`);
+      // BigQuery streaming insert returns detailed per-row errors
+      if (error?.response?.insertErrors) {
+        this.logger.error(`BigQuery insertErrors: ${JSON.stringify(error.response.insertErrors)}`);
+      }
+      if (error?.errors) {
+        this.logger.error(`BigQuery errors detail: ${JSON.stringify(error.errors)}`);
+      }
     }
   }
 }

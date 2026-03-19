@@ -190,6 +190,13 @@ export class ConversationsController {
               intermediateSteps: aiResult.structured.intermediateSteps,
             }
           : {}),
+        // Fallback API info when ADK failed
+        ...(aiResult.fallbackUsed
+          ? {
+              fallbackUsed: true,
+              adkError: aiResult.adkError,
+            }
+          : {}),
       };
     } catch (error) {
       const totalDuration = Date.now() - startTime;

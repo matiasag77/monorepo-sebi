@@ -14,6 +14,8 @@ export interface AdkStructuredResponse {
 export interface ChatResponse {
   response: string;
   structured?: AdkStructuredResponse;
+  fallbackUsed?: boolean;
+  adkError?: string;
 }
 
 @Injectable()
@@ -24,6 +26,7 @@ export class ChatService {
   private readonly appName: string;
   private authClient: IdTokenClient | null = null;
   private readonly useWIF: boolean;
+  private readonly fallbackApiUrl: string;
 
   constructor(private readonly configService: ConfigService) {
     this.adkUrl =
@@ -32,8 +35,12 @@ export class ChatService {
       'https://adktestv1-367988788237.us-central1.run.app';
     this.appName = this.configService.get<string>('APP_NAME', 'SEBI');
     this.useWIF = this.configService.get<string>('USE_WORKLOAD_IDENTITY') === 'true';
+    this.fallbackApiUrl =
+      this.configService.get<string>('FALLBACK_API_URL') ||
+      'https://skelligen-api.prod.interno.forus-sistemas.com/api/test-ai';
     this.logger.log(`ChatService initialized - ADK URL configured: ${this.adkUrl ? 'YES' : 'NO (EMPTY!)'}`);
     this.logger.log(`ChatService - App name: ${this.appName}, WIF enabled: ${this.useWIF}`);
+    this.logger.log(`ChatService - Fallback API URL: ${this.fallbackApiUrl}`);
     if (this.adkUrl) {
       this.logger.log(`ADK URL: ${this.adkUrl}`);
       this.initAuthClient();
@@ -331,6 +338,47 @@ export class ChatService {
     };
   }
 
+  /**
+   * Llama a la API de fallback (Skelligen test-ai) cuando ADK falla.
+   */
+  private async sendToFallbackApi(message: string): Promise<ChatResponse> {
+    this.logger.log(`=== sendToFallbackApi START === URL: ${this.fallbackApiUrl}`);
+    try {
+      const res = await fetch(this.fallbackApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ prompt: message }),
+        signal: AbortSignal.timeout(60000), // 60s timeout
+      });
+
+      const data = await res.json();
+      this.logger.log(`Fallback API response - status=${res.status}, success=${data?.success}`);
+
+      if (res.ok && data?.success && data?.data?.response) {
+        this.logger.log(`=== sendToFallbackApi END (success) ===`);
+        return {
+          response: data.data.response,
+          fallbackUsed: true,
+        };
+      }
+
+      this.logger.error(`Fallback API returned unexpected response: ${JSON.stringify(data).substring(0, 500)}`);
+      return {
+        response: 'Lo siento, no pude procesar tu consulta en este momento. Por favor, intentá de nuevo más tarde.',
+        fallbackUsed: true,
+      };
+    } catch (error) {
+      this.logger.error(`Fallback API also failed: ${error instanceof Error ? error.message : String(error)}`);
+      return {
+        response: 'Lo siento, todos los servicios de IA están temporalmente no disponibles. Por favor, intentá de nuevo más tarde.',
+        fallbackUsed: true,
+      };
+    }
+  }
+
   private async sendToAdk(
     message: string,
     userId?: string,
@@ -347,10 +395,10 @@ export class ChatService {
 
     if (!this.adkUrl) {
       this.logger.error('ADK_API_URL is empty! Cannot proceed with AI request.');
-      return {
-        response:
-          'Lo siento, el servicio de IA no está configurado. Contactá al administrador.',
-      };
+      this.logger.log('Attempting fallback API due to missing ADK URL...');
+      const fallbackResult = await this.sendToFallbackApi(message);
+      fallbackResult.adkError = 'ADK_API_URL no está configurada.';
+      return fallbackResult;
     }
 
     try {
@@ -385,12 +433,13 @@ export class ChatService {
       this.logger.log(`ADK response received in ${fetchDuration}ms - status=${res.status}, statusText=${res.statusText}`);
 
       if (res.status >= 400) {
-        this.logger.error(`ADK API error response - status=${res.status}, statusText=${res.statusText}`);
+        const adkErrorMsg = `ADK API error - status=${res.status}, statusText=${res.statusText}`;
+        this.logger.error(adkErrorMsg);
         this.logger.error(`ADK API error body (first 1000 chars): ${res.data.substring(0, 1000)}`);
-        return {
-          response:
-            'Lo siento, no pude procesar tu consulta. Por favor, intentá de nuevo más tarde.',
-        };
+        this.logger.log('Attempting fallback API due to ADK HTTP error...');
+        const fallbackResult = await this.sendToFallbackApi(message);
+        fallbackResult.adkError = adkErrorMsg;
+        return fallbackResult;
       }
 
       // 3. Parse SSE response
@@ -407,25 +456,25 @@ export class ChatService {
         structured,
       };
     } catch (error) {
+      let adkErrorMsg: string;
       if (error instanceof Error && error.name === 'AbortError') {
-        this.logger.error('=== sendToAdk END (TIMEOUT) === ADK API request timed out after 300s');
-        return {
-          response:
-            'Lo siento, la consulta tardó demasiado. Por favor, intentá de nuevo más tarde.',
-        };
+        adkErrorMsg = 'ADK API request timed out after 300s';
+        this.logger.error(`=== sendToAdk END (TIMEOUT) === ${adkErrorMsg}`);
+      } else {
+        adkErrorMsg = `ADK error: ${error instanceof Error ? error.message : String(error)}`;
+        this.logger.error(`=== sendToAdk END (ERROR) ===`);
+        this.logger.error(`Error type: ${error?.constructor?.name}`);
+        this.logger.error(`Error message: ${error instanceof Error ? error.message : String(error)}`);
+        this.logger.error(`Error stack: ${error instanceof Error ? error.stack : 'N/A'}`);
+        if (error instanceof TypeError) {
+          this.logger.error(`TypeError usually means: network error, DNS resolution failed, or invalid URL`);
+          this.logger.error(`Check that ADK_API_URL (${this.adkUrl}) is reachable from this container/pod`);
+        }
       }
-      this.logger.error(`=== sendToAdk END (ERROR) ===`);
-      this.logger.error(`Error type: ${error?.constructor?.name}`);
-      this.logger.error(`Error message: ${error instanceof Error ? error.message : String(error)}`);
-      this.logger.error(`Error stack: ${error instanceof Error ? error.stack : 'N/A'}`);
-      if (error instanceof TypeError) {
-        this.logger.error(`TypeError usually means: network error, DNS resolution failed, or invalid URL`);
-        this.logger.error(`Check that ADK_API_URL (${this.adkUrl}) is reachable from this container/pod`);
-      }
-      return {
-        response:
-          'Lo siento, ocurrió un error al conectar con el servicio de IA. Por favor, intentá de nuevo más tarde.',
-      };
+      this.logger.log('Attempting fallback API due to ADK exception...');
+      const fallbackResult = await this.sendToFallbackApi(message);
+      fallbackResult.adkError = adkErrorMsg;
+      return fallbackResult;
     }
   }
 

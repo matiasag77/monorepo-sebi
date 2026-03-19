@@ -17,6 +17,7 @@ import {
   Loader2,
   MessageSquare,
   ArrowDown,
+  AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import * as api from "@/lib/api"
@@ -188,6 +189,19 @@ function ProactiveSuggestion({ text }: { text: string }) {
   )
 }
 
+function AdkErrorBanner({ error }: { error: string }) {
+  return (
+    <div className="mb-2 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-start gap-2">
+      <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+      <div>
+        <span className="font-semibold text-red-400">Error en ADK: </span>
+        <span>{error}</span>
+        <p className="mt-1 text-red-400/70">Se utilizó el servicio de respaldo para responder tu consulta.</p>
+      </div>
+    </div>
+  )
+}
+
 function MessageBubble({ message, isUser }: { message: Message; isUser: boolean }) {
   return (
     <div
@@ -220,6 +234,9 @@ function MessageBubble({ message, isUser }: { message: Message; isUser: boolean 
           message.content
         ) : (
           <>
+            {message.fallbackUsed && message.adkError && (
+              <AdkErrorBanner error={message.adkError} />
+            )}
             {message.intermediateSteps && (
               <IntermediateSteps steps={message.intermediateSteps} />
             )}
@@ -400,6 +417,8 @@ function ChatPage() {
         proactivo: response.proactivo,
         context: response.context,
         intermediateSteps: response.intermediateSteps,
+        fallbackUsed: response.fallbackUsed,
+        adkError: response.adkError,
       }
       setMessages((prev) => [...prev, assistantMessage])
     } catch {

@@ -1,98 +1,126 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# SEBI Chatbot — Backend (NestJS)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API BFF (Backend For Frontend) del chatbot analítico **SEBI**. Construido con NestJS, se encarga de autenticación, comunicación con el agente de IA en Cloud Run, historial de conversaciones y trazabilidad en BigQuery.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Arquitectura
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
+```
+src/
+├── auth/            # Autenticación JWT + Google OAuth + RBAC
+├── gcp-auth/        # Módulo reutilizable de auth GCP (WIF / ADC / JSON key)
+├── chat/            # Proxy hacia el agente ADK en Cloud Run
+├── conversations/   # CRUD de conversaciones (MongoDB)
+├── suggestions/     # Sugerencias de mensajes para el chat
+├── bigquery/        # Trazabilidad de conversaciones en BigQuery
+├── tracking/        # Auditoría de eventos de usuario
+├── users/           # Gestión de usuarios
+├── app.module.ts    # Módulo raíz
+└── main.ts          # Bootstrap + Swagger
 ```
 
-## Compile and run the project
+### Módulo `gcp-auth` (nuevo)
+
+Módulo **global y reutilizable** que centraliza toda la lógica de autenticación con GCP:
+
+| Método | Descripción |
+|--------|-------------|
+| `makeAuthenticatedRequest(url, opts)` | Request HTTP autenticado (WIF, IdTokenClient o fallback sin auth) |
+| `getIdTokenWIF(audience)` | Genera ID Token via WIF (ExternalAccountClient -> generateIdToken) |
+| `getExternalAccountClient(scopes)` | Devuelve un authClient para SDKs de GCP (BigQuery, Storage, etc.) |
+| `getIdTokenClient(audience)` | Devuelve un IdTokenClient cacheado (non-WIF) |
+
+Soporta tres modos de autenticación (en orden de prioridad):
+
+1. **WIF** (`USE_WORKLOAD_IDENTITY=true`): para pods en EKS -> GCP via STS token exchange.
+2. **JSON key file** (`GOOGLE_KEY_FILE` o `BIGQUERY_KEY_FILE`): credenciales explícitas.
+3. **ADC** (Application Default Credentials): fallback automático.
+
+## Requisitos
+
+- Node.js >= 20
+- MongoDB (local o Atlas)
+- Credenciales GCP (opcional para desarrollo local)
+
+## Instalación
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cd backend
+npm install
+cp .env.example .env   # Editar con tus valores
 ```
 
-## Run tests
+## Desarrollo
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run start:dev
 ```
 
-## Deployment
+La API estará disponible en `http://localhost:3333/api`.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Swagger
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Disponible por defecto en `http://localhost:3333/api/docs`.
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+Para desactivar: `SWAGGER_ENABLED=false`.
+
+Incluye:
+
+- Autenticación JWT persistente (Authorization header)
+- Todos los endpoints documentados con DTOs
+- Filtro y ordenamiento de operaciones
+
+## Variables de entorno
+
+| Variable | Descripción | Requerida |
+|----------|-------------|-----------|
+| `PORT` | Puerto del servidor (default: 3333) | No |
+| `FRONTEND_URL` | URL del frontend para CORS | Si |
+| `MONGODB_URI` | Connection string de MongoDB | Si |
+| `JWT_SECRET` | Secreto para firmar JWT tokens | Si |
+| `GOOGLE_CLIENT_ID` | Client ID de Google OAuth | Si |
+| `GOOGLE_CLIENT_SECRET` | Client Secret de Google OAuth | Si |
+| `ADK_API_URL` | URL del agente ADK en Cloud Run | Si |
+| `BIGQUERY_PROJECT_ID` | ID del proyecto GCP para BigQuery | No |
+| `BIGQUERY_KEY_FILE` | Ruta al JSON de service account | No |
+| `BIGQUERY_DATASET` | Dataset de BigQuery (default: test_logs) | No |
+| `BIGQUERY_TABLE` | Tabla de BigQuery (default: web_test) | No |
+| `USE_WORKLOAD_IDENTITY` | Activar WIF (`true`/`false`) | No |
+| `WORKLOAD_IDENTITY_AUDIENCE` | Audience URL para WIF | Si (con WIF) |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Email de la SA de GCP | Si (con WIF) |
+| `AWS_WEB_IDENTITY_TOKEN_FILE` | Path al token OIDC del pod | No |
+| `GOOGLE_KEY_FILE` | Ruta a credenciales JSON de GCP | No |
+| `SWAGGER_ENABLED` | Habilitar Swagger (default: true) | No |
+
+## Scripts
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run start:dev` | Desarrollo con hot reload |
+| `npm run build` | Compilar a JavaScript |
+| `npm run start:prod` | Producción (`node dist/main`) |
+| `npm run test` | Tests unitarios |
+| `npm run test:e2e` | Tests end-to-end |
+| `npm run lint` | Linter (ESLint) |
+
+## Autenticación GCP en producción (WIF)
+
+En EKS, el pod usa IRSA para obtener un JWT OIDC de AWS. El módulo `gcp-auth` intercambia ese token con GCP STS para impersonar una Service Account:
+
+```
+Pod (EKS) -> JWT OIDC -> GCP STS -> Access Token -> SA Impersonation -> ID Token / API Calls
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Esto permite acceder a Cloud Run (chat) y BigQuery (trazabilidad) sin manejar archivos JSON de credenciales.
 
-## Resources
+## Endpoints principales
 
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Método | Ruta | Descripción | Auth |
+|--------|------|-------------|------|
+| `POST` | `/api/auth/login` | Login con email/password | No |
+| `POST` | `/api/auth/google` | Login con Google OAuth | No |
+| `POST` | `/api/auth/register-public` | Auto-registro | No |
+| `GET` | `/api/auth/profile` | Perfil del usuario actual | JWT |
+| `POST` | `/api/chat/send` | Enviar mensaje al agente IA | JWT |
+| `GET` | `/api/conversations` | Listar conversaciones | JWT |
+| `GET` | `/api/suggestions` | Obtener sugerencias | JWT |
+| `GET` | `/api/users` | Listar usuarios (admin) | JWT + Admin |

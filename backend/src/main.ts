@@ -28,11 +28,24 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger - only enabled in non-production environments
-  if (configService.get<string>('NODE_ENV') !== 'production') {
+  // Swagger — habilitado por defecto, desactivar con SWAGGER_ENABLED=false
+  const swaggerEnabled = configService.get<string>('SWAGGER_ENABLED', 'true') !== 'false';
+  if (swaggerEnabled) {
     const config = new DocumentBuilder()
       .setTitle('SEBI Chatbot API')
-      .setDescription('API Backend for the SEBI Chatbot application')
+      .setDescription(
+        'API Backend for the SEBI Chatbot application.\n\n' +
+        '## Autenticación\n' +
+        'La mayoría de los endpoints requieren un JWT token. ' +
+        'Obtén uno via `POST /api/auth/login` o `POST /api/auth/google` y úsalo en el header `Authorization: Bearer <token>`.\n\n' +
+        '## Módulos\n' +
+        '- **Auth**: Registro, login y OAuth con Google\n' +
+        '- **Chat**: Envío de mensajes al agente de IA (ADK/Cloud Run)\n' +
+        '- **Conversations**: Historial de conversaciones\n' +
+        '- **Suggestions**: Sugerencias de mensajes\n' +
+        '- **Users**: Gestión de usuarios (admin)\n' +
+        '- **Tracking**: Auditoría de eventos',
+      )
       .setVersion('1.0')
       .addBearerAuth(
         {
@@ -45,15 +58,30 @@ async function bootstrap() {
         },
         'JWT-auth',
       )
+      .addServer(
+        `http://localhost:${configService.get<number>('PORT', 3333)}`,
+        'Local development',
+      )
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+        docExpansion: 'list',
+        filter: true,
+        tagsSorter: 'alpha',
+        operationsSorter: 'alpha',
+      },
+    });
   }
 
   const port = configService.get<number>('PORT', 3333);
   await app.listen(port);
   const logger = new Logger('Bootstrap');
   logger.log(`Application is running on port ${port}`);
+  if (swaggerEnabled) {
+    logger.log(`Swagger docs available at http://localhost:${port}/api/docs`);
+  }
 }
 bootstrap();

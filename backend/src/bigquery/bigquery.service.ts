@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BigQuery } from '@google-cloud/bigquery';
+import { GcpAuthService } from '../gcp-auth/gcp-auth.service';
 
 export interface ConversationTrace {
   user_id: string;
@@ -20,75 +21,39 @@ export class BigQueryService implements OnModuleInit {
   private tableId: string;
   private enabled: boolean;
 
-  constructor(private configService: ConfigService) {
-    this.datasetId = this.configService.get<string>(
-      'BIGQUERY_DATASET',
-      'test_logs',
-    );
-    this.tableId = this.configService.get<string>(
-      'BIGQUERY_TABLE',
-      'web_test',
-    );
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly gcpAuth: GcpAuthService,
+  ) {
+    this.datasetId = this.configService.get<string>('BIGQUERY_DATASET', 'test_logs');
+    this.tableId = this.configService.get<string>('BIGQUERY_TABLE', 'web_test');
     this.enabled = !!this.configService.get<string>('BIGQUERY_PROJECT_ID');
   }
 
   async onModuleInit() {
     if (!this.enabled) {
-      this.logger.warn(
-        'BigQuery is not configured (BIGQUERY_PROJECT_ID missing). Tracing disabled.',
-      );
+      this.logger.warn('BigQuery is not configured (BIGQUERY_PROJECT_ID missing). Tracing disabled.');
       return;
     }
+
     const projectId = this.configService.get<string>('BIGQUERY_PROJECT_ID');
     const keyFilename = this.configService.get<string>('BIGQUERY_KEY_FILE');
     const credentialsJson = this.configService.get<string>('BIGQUERY_CREDENTIALS_JSON');
-    // Detectar si estamos en K8s con WIF/IRSA
-    const useWIF = this.configService.get<boolean>('USE_WORKLOAD_IDENTITY', false);
-    
+
     const options: ConstructorParameters<typeof BigQuery>[0] = { projectId };
 
-    if (useWIF) {
-      // Producción: WIF con AWS + K8s IRSA
-      this.logger.log('Using Workload Identity Federation (AWS/K8s) for BigQuery authentication.');
+    if (this.gcpAuth.useWIF) {
+      // Producción: WIF con AWS + K8s IRSA — delegado a GcpAuthService
+      this.logger.log('Using GcpAuthService (WIF) for BigQuery authentication.');
       try {
-        const { ExternalAccountClient } = await import('google-auth-library');
-        
-        // Leer configuración WIF del configmap
-        const audience = this.configService.get<string>('WORKLOAD_IDENTITY_AUDIENCE');
-        const serviceAccountEmail = this.configService.get<string>(
-          'GOOGLE_SERVICE_ACCOUNT_EMAIL',
-          'sebi-app-prod@forus-cl-ti-geminienterprise.iam.gserviceaccount.com',
-        );
-        
-        if (!audience) {
-          throw new Error('WORKLOAD_IDENTITY_AUDIENCE not found in config. Check your configmap.');
-        }
-
-        const awsTokenFile = this.configService.get<string>('AWS_WEB_IDENTITY_TOKEN_FILE') || '/var/run/secrets/eks.amazonaws.com/serviceaccount/token';   
-             
-        // Configurar ExternalAccountClient para AWS → GCP exchange usando directamente el JWT de Kubernetes
-        const externalAccountConfig = {
-          type: 'external_account',
-          audience,
-          subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
-          token_url: 'https://sts.googleapis.com/v1/token',
-          credential_source: {
-            file: awsTokenFile,
-          },
-          service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${serviceAccountEmail}:generateAccessToken`,
-        };
-        
-        const authClient = ExternalAccountClient.fromJSON(externalAccountConfig) as any;
-        if (authClient) {
-          authClient.scopes = ['https://www.googleapis.com/auth/bigquery'];
-          options.authClient = authClient;
-          this.logger.log('✓ ExternalAccountClient configured for AWS→GCP credential exchange (WIF)');
-        } else {
-          throw new Error('Failed to create ExternalAccountClient from config');
-        }
+        const authClient = await this.gcpAuth.getExternalAccountClient([
+          'https://www.googleapis.com/auth/bigquery',
+        ]);
+        options.authClient = authClient;
+        this.logger.log('ExternalAccountClient configured via GcpAuthService for BigQuery');
       } catch (error) {
-        this.logger.error('✗ Error configuring ExternalAccountClient for WIF', error);
-        this.logger.warn('⚠ Will attempt to use Application Default Credentials as fallback');
+        this.logger.error(`Error getting WIF client from GcpAuthService: ${error}`);
+        this.logger.warn('Will attempt to use Application Default Credentials as fallback');
       }
     } else if (keyFilename) {
       options.keyFilename = keyFilename;
@@ -110,9 +75,7 @@ export class BigQueryService implements OnModuleInit {
     if (!this.bigquery) return;
 
     try {
-      const [datasetExists] = await this.bigquery
-        .dataset(this.datasetId)
-        .exists();
+      const [datasetExists] = await this.bigquery.dataset(this.datasetId).exists();
       if (!datasetExists) {
         await this.bigquery.createDataset(this.datasetId);
         this.logger.log(`Dataset "${this.datasetId}" created.`);
@@ -136,9 +99,7 @@ export class BigQueryService implements OnModuleInit {
             ],
           },
         });
-        this.logger.log(
-          `Table "${this.datasetId}.${this.tableId}" created.`,
-        );
+        this.logger.log(`Table "${this.datasetId}.${this.tableId}" created.`);
       }
 
       this.logger.log('BigQuery tracing initialized successfully.');
@@ -149,15 +110,11 @@ export class BigQueryService implements OnModuleInit {
 
   async insertConversationTrace(trace: ConversationTrace): Promise<void> {
     if (!this.bigquery) {
-      this.logger.debug(
-        'BigQuery not configured, skipping trace insertion.',
-      );
+      this.logger.debug('BigQuery not configured, skipping trace insertion.');
       return;
     }
 
     try {
-      // Sanitize the row: convert timestamp to BigQuery-compatible format
-      // and ensure no undefined/null values that cause PartialFailureError
       const row = {
         user_id: trace.user_id || '',
         user_email: trace.user_email || '',
@@ -171,7 +128,6 @@ export class BigQueryService implements OnModuleInit {
       this.logger.log(
         `Inserting trace for user ${row.user_email} in conversation ${row.conversation_id}...`,
       );
-      this.logger.debug(`Row data: ${JSON.stringify({ ...row, answer: row.answer.substring(0, 100) + '...' })}`);
 
       await this.bigquery
         .dataset(this.datasetId)
@@ -182,32 +138,24 @@ export class BigQueryService implements OnModuleInit {
           ignoreUnknownValues: false,
         });
       this.logger.log(
-        `✓ Trace inserted for user ${row.user_email} in conversation ${row.conversation_id}`,
+        `Trace inserted for user ${row.user_email} in conversation ${row.conversation_id}`,
       );
     } catch (error: any) {
-      this.logger.error(`Error inserting trace into BigQuery: ${error?.name || 'Unknown'} - ${error?.message || error}`);
+      this.logger.error(
+        `Error inserting trace into BigQuery: ${error?.name || 'Unknown'} - ${error?.message || error}`,
+      );
 
-      // PartialFailureError contains per-row error details
       if (error?.name === 'PartialFailureError' && error?.errors) {
         for (const rowError of error.errors) {
           this.logger.error(`Row error: ${JSON.stringify(rowError.errors)}`);
-          if (rowError.row) {
-            this.logger.error(`Failed row data: ${JSON.stringify(rowError.row)}`);
-          }
         }
       }
-      // Also check response-level insertErrors
       if (error?.response?.insertErrors) {
         this.logger.error(`BigQuery insertErrors: ${JSON.stringify(error.response.insertErrors)}`);
       }
     }
   }
 
-  /**
-   * Converts an ISO timestamp string to BigQuery-compatible format.
-   * BigQuery streaming insert expects: "YYYY-MM-DD HH:MM:SS.SSSSSS UTC"
-   * or a numeric Unix epoch (seconds with microsecond precision).
-   */
   private toBigQueryTimestamp(isoString: string): string {
     try {
       const date = new Date(isoString);

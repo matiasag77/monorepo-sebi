@@ -21,6 +21,8 @@ export interface Message {
   proactivo?: string | null;
   context?: string | null;
   intermediateSteps?: string[];
+  fallbackUsed?: boolean;
+  adkError?: string;
 }
 
 export interface Conversation {

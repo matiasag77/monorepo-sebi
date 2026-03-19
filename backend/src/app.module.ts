@@ -9,6 +9,7 @@ import { ChatModule } from './chat/chat.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { BigQueryModule } from './bigquery/bigquery.module';
+import { SuggestionsModule } from './suggestions/suggestions.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -42,6 +43,7 @@ import { AppService } from './app.service';
     ConversationsModule,
     TrackingModule,
     BigQueryModule,
+    SuggestionsModule,
   ],
   controllers: [AppController],
   providers: [

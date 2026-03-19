@@ -47,4 +47,5 @@ export interface ChatSuggestion {
   id: string;
   text: string;
   category: string;
+  isDefault?: boolean;
 }

@@ -14,6 +14,7 @@ import {
   History,
   LayoutDashboard,
   Users,
+  Sparkles,
   LogOut,
   Menu,
   Bot,
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
   { label: "Historial", href: "/history", icon: <History className="w-5 h-5" /> },
   { label: "Dashboard", href: "/admin", icon: <LayoutDashboard className="w-5 h-5" />, adminOnly: true },
   { label: "Usuarios", href: "/admin/users", icon: <Users className="w-5 h-5" />, adminOnly: true },
+  { label: "Sugerencias", href: "/admin/suggestions", icon: <Sparkles className="w-5 h-5" />, adminOnly: true },
 ]
 
 function SidebarContent({

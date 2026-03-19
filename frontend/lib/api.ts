@@ -129,6 +129,8 @@ export interface SendMessageResponse {
   proactivo?: string | null
   context?: string | null
   intermediateSteps?: string[]
+  fallbackUsed?: boolean
+  adkError?: string
 }
 
 export async function sendMessage(
@@ -142,12 +144,52 @@ export async function sendMessage(
 }
 
 export async function getSuggestions(): Promise<ChatSuggestion[]> {
-  const data = await request<{ suggestions: string[] }>("/chat/suggestions")
-  return data.suggestions.map((text, i) => ({
-    id: String(i),
-    text,
-    category: "general",
+  const data = await request<{
+    suggestions: { id: string; text: string; category: string; isDefault: boolean }[]
+  }>("/suggestions")
+  return data.suggestions.map((s) => ({
+    id: s.id,
+    text: s.text,
+    category: s.category,
+    isDefault: s.isDefault,
   }))
+}
+
+export async function deleteSuggestion(id: string): Promise<void> {
+  return request<void>(`/suggestions/${id}`, { method: "DELETE" })
+}
+
+// Admin: sugerencias por defecto
+export async function getDefaultSuggestions(): Promise<
+  { id: string; text: string; category: string; isActive: boolean; order: number }[]
+> {
+  const data = await request<{
+    suggestions: { id: string; text: string; category: string; isActive: boolean; order: number }[]
+  }>("/suggestions/admin/defaults")
+  return data.suggestions
+}
+
+export async function createDefaultSuggestion(
+  body: { text: string; category?: string; order?: number }
+): Promise<{ id: string; text: string; category: string; order: number }> {
+  return request("/suggestions/admin/defaults", {
+    method: "POST",
+    body: JSON.stringify(body),
+  })
+}
+
+export async function updateDefaultSuggestion(
+  id: string,
+  body: { text?: string; category?: string; order?: number; isActive?: boolean }
+): Promise<{ id: string; text: string; category: string; order: number; isActive: boolean }> {
+  return request(`/suggestions/admin/defaults/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  })
+}
+
+export async function deleteDefaultSuggestion(id: string): Promise<void> {
+  return request<void>(`/suggestions/admin/defaults/${id}`, { method: "DELETE" })
 }
 
 export async function registerPublic(formData: {

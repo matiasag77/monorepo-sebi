@@ -367,13 +367,13 @@ export class ChatService {
 
       this.logger.error(`Fallback API returned unexpected response: ${JSON.stringify(data).substring(0, 500)}`);
       return {
-        response: 'Lo siento, no pude procesar tu consulta en este momento. Por favor, intentá de nuevo más tarde.',
+        response: 'No fue posible procesar tu consulta en este momento. Por favor, intenta de nuevo más tarde.',
         fallbackUsed: true,
       };
     } catch (error) {
       this.logger.error(`Fallback API also failed: ${error instanceof Error ? error.message : String(error)}`);
       return {
-        response: 'Lo siento, todos los servicios de IA están temporalmente no disponibles. Por favor, intentá de nuevo más tarde.',
+        response: 'Los servicios de IA se encuentran temporalmente no disponibles. Por favor, intenta de nuevo más tarde.',
         fallbackUsed: true,
       };
     }

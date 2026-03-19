@@ -34,12 +34,14 @@ export class ConversationsService {
   async findAllByUser(userId: string): Promise<ConversationDocument[]> {
     return this.conversationModel
       .find({ userId })
+      .select('-messages')
       .sort({ updatedAt: -1 })
+      .lean()
       .exec();
   }
 
   async findById(id: string, userId: string): Promise<ConversationDocument> {
-    const conversation = await this.conversationModel.findOne({ _id: id, userId }).exec();
+    const conversation = await this.conversationModel.findOne({ _id: id, userId }).lean().exec();
     if (!conversation) {
       throw new NotFoundException(`Conversation with ID ${id} not found`);
     }
@@ -75,16 +77,19 @@ export class ConversationsService {
     role: 'user' | 'assistant',
     content: string,
   ): Promise<ConversationDocument> {
-    const conversation = await this.conversationModel.findOne({ _id: id, userId }).exec();
+    const conversation = await this.conversationModel
+      .findOneAndUpdate(
+        { _id: id, userId },
+        {
+          $push: { messages: { role, content, timestamp: new Date() } },
+          $set: { lastMessage: content },
+        },
+        { new: true },
+      )
+      .exec();
     if (!conversation) {
       throw new NotFoundException(`Conversation with ID ${id} not found`);
     }
-    conversation.messages.push({
-      role,
-      content,
-      timestamp: new Date(),
-    });
-    conversation.lastMessage = content;
-    return conversation.save();
+    return conversation;
   }
 }

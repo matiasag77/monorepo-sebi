@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SEBI Chatbot — Frontend (Next.js)
 
-## Getting Started
+Interfaz web del chatbot analítico **SEBI**. Construido con Next.js 16, React 19 y Tailwind CSS. Incluye autenticación con NextAuth, chat con IA, historial de conversaciones y panel de administración.
 
-First, run the development server:
+## Arquitectura
+
+```
+app/
+├── login/                    # Página de login
+└── (authenticated)/          # Rutas protegidas
+    ├── chat/                 # Chat principal con el agente IA
+    ├── history/              # Historial de conversaciones
+    ├── admin/                # Dashboard de administración
+    ├── admin/users/          # Gestión de usuarios
+    └── admin/suggestions/    # Gestión de sugerencias
+
+components/                   # Componentes React reutilizables
+hooks/                        # Custom hooks (useAuth, etc.)
+lib/
+├── auth.ts                   # Configuración NextAuth (Google + Credentials)
+├── api.ts                    # Cliente API con gestión de tokens
+└── utils.ts                  # Utilidades (cn, etc.)
+types/                        # Interfaces TypeScript
+middleware.ts                 # Protección de rutas y redirecciones
+```
+
+## Requisitos
+
+- Node.js >= 20
+- Backend SEBI corriendo (default: `http://localhost:3333`)
+
+## Instalación
+
+```bash
+cd frontend
+npm install
+cp .env.example .env   # Editar con tus valores
+```
+
+## Desarrollo
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+La app estará disponible en `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variables de entorno
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Descripción | Requerida |
+|----------|-------------|-----------|
+| `NEXT_PUBLIC_API_URL` | URL de la API backend (ej: `http://localhost:3333/api`) | Si |
+| `NEXTAUTH_SECRET` | Secreto para NextAuth sessions | Si |
+| `AUTH_SECRET` | Alias de NEXTAUTH_SECRET | Si |
+| `NEXTAUTH_URL` | URL base del frontend (ej: `http://localhost:3000`) | Si |
+| `GOOGLE_CLIENT_ID` | Client ID de Google OAuth | Si |
+| `GOOGLE_CLIENT_SECRET` | Client Secret de Google OAuth | Si |
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Desarrollo con hot reload |
+| `npm run build` | Compilar para producción |
+| `npm run start` | Iniciar build de producción |
+| `npm run lint` | Linter (ESLint) |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Autenticación
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Se usa **NextAuth v5** con dos providers:
 
-## Deploy on Vercel
+1. **Google OAuth**: login con cuenta Google (dominio @forus.cl).
+2. **Credentials**: login con email y password via el backend.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+El middleware protege automáticamente las rutas:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `/login` y `/api/auth` son públicas.
+- Rutas `/admin/*` requieren rol `admin`.
+- Todas las demás rutas requieren sesión activa.
+
+## Funcionalidades
+
+- **Chat con IA**: interfaz de chat con soporte para tablas, gráficos, contexto y pasos intermedios.
+- **Historial**: visualización y gestión de conversaciones pasadas.
+- **Sugerencias**: mensajes sugeridos configurables desde el admin.
+- **Panel admin**: gestión de usuarios y sugerencias.
+- **Markdown**: respuestas del agente renderizadas con react-markdown y GFM.

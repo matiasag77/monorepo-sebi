@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { GcpAuthModule } from './gcp-auth/gcp-auth.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ChatModule } from './chat/chat.module';
@@ -37,6 +38,7 @@ import { AppService } from './app.service';
         uri: configService.get<string>( 'MONGODB_URI' )}),
       inject: [ConfigService],
     }),
+    GcpAuthModule,
     AuthModule,
     UsersModule,
     ChatModule,

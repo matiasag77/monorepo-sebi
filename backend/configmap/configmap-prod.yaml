@@ -1,0 +1,29 @@
+apiVersion: v1
+data:
+  LOG_LEVEL: "INFO"
+  NODE_ENV: "production"
+  # Server
+  PORT: "3000"
+  FRONTEND_URL: https://sebi-app-frontend.prod.interno.forus-sistemas.com
+  # JWT
+  # Google OAuth
+  GOOGLE_CLIENT_ID: 572004338461-jhehqood67bppl1r4bv33p0dqdlpat28.apps.googleusercontent.com
+  
+  # BigQuery
+  BIGQUERY_PROJECT_ID: forus-cl-ti-geminienterprise
+  # BIGQUERY_KEY_FILE: ./path-to-service-account-key.json
+  BIGQUERY_DATASET: test_logs
+  BIGQUERY_TABLE: web_test
+  SEBI_AGENT_URL: https://adktestv1-367988788237.us-central1.run.app
+  APP_NAME: SEBI
+
+  # Google Cloud Credentials
+  WORKLOAD_IDENTITY_AUDIENCE:  "//iam.googleapis.com/projects/399232061720/locations/global/workloadIdentityPools/eks-forus-stack-pool/providers/eks-provider"
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: "sebi-app-prod@forus-cl-ti-geminienterprise.iam.gserviceaccount.com"
+  USE_WORKLOAD_IDENTITY: "true"
+
+
+kind: ConfigMap
+metadata:
+  name: api-bff-sebi
+  namespace: prod

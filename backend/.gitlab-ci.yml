@@ -1,0 +1,23 @@
+
+variables:
+  IMAGE_RUNNER: 080621519835.dkr.ecr.us-east-1.amazonaws.com/docker-pipelines-forus:latest
+  VERSION: $CI_COMMIT_SHA
+  ECR_NAME_PROD: forus/$CI_PROJECT_NAME
+  ECR_NAME_TEST: forus/test/$CI_PROJECT_NAME
+  REPOSITORY_URL_PROD: 080621519835.dkr.ecr.us-east-1.amazonaws.com/$ECR_NAME_PROD
+  REPOSITORY_URL_TEST: 080621519835.dkr.ecr.us-east-1.amazonaws.com/$ECR_NAME_TEST
+  NAMESPACE_TEST: test
+  NAMESPACE_PROD: prod
+include:
+  - project: forus-corp/desarrollo-sistemas/dev-tools/ci-cd-templates
+    ref: master
+    file: deploy/deploy_jobs_configuraciones-eks-29.yml
+  - project: forus-corp/desarrollo-sistemas/dev-tools/ci-cd-templates
+    ref: master
+    file: deploy/deploy-configmap-eks-29.yml
+  - project: forus-corp/desarrollo-sistemas/dev-tools/ci-cd-templates
+    ref: master
+    file: delivery/build_scripts.yml
+  - project: forus-corp/desarrollo-sistemas/dev-tools/ci-cd-templates
+    ref: master
+    file: stages/stages-docker_dot_env-MRpipeline.yml

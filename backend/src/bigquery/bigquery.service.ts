@@ -156,25 +156,69 @@ export class BigQueryService implements OnModuleInit {
     }
 
     try {
+      // Sanitize the row: convert timestamp to BigQuery-compatible format
+      // and ensure no undefined/null values that cause PartialFailureError
+      const row = {
+        user_id: trace.user_id || '',
+        user_email: trace.user_email || '',
+        user_name: trace.user_name || '',
+        conversation_id: trace.conversation_id || '',
+        question: trace.question || '',
+        answer: trace.answer || '',
+        timestamp: this.toBigQueryTimestamp(trace.timestamp),
+      };
+
       this.logger.log(
-        `Inserting trace for user ${trace.user_email} in conversation ${trace.conversation_id}...`,
+        `Inserting trace for user ${row.user_email} in conversation ${row.conversation_id}...`,
       );
+      this.logger.debug(`Row data: ${JSON.stringify({ ...row, answer: row.answer.substring(0, 100) + '...' })}`);
+
       await this.bigquery
         .dataset(this.datasetId)
         .table(this.tableId)
-        .insert([trace]);
+        .insert([row], {
+          raw: false,
+          skipInvalidRows: false,
+          ignoreUnknownValues: false,
+        });
       this.logger.log(
-        `✓ Trace inserted for user ${trace.user_email} in conversation ${trace.conversation_id}`,
+        `✓ Trace inserted for user ${row.user_email} in conversation ${row.conversation_id}`,
       );
     } catch (error: any) {
-      this.logger.error(`Error inserting trace into BigQuery: ${error?.message || error}`);
-      // BigQuery streaming insert returns detailed per-row errors
+      this.logger.error(`Error inserting trace into BigQuery: ${error?.name || 'Unknown'} - ${error?.message || error}`);
+
+      // PartialFailureError contains per-row error details
+      if (error?.name === 'PartialFailureError' && error?.errors) {
+        for (const rowError of error.errors) {
+          this.logger.error(`Row error: ${JSON.stringify(rowError.errors)}`);
+          if (rowError.row) {
+            this.logger.error(`Failed row data: ${JSON.stringify(rowError.row)}`);
+          }
+        }
+      }
+      // Also check response-level insertErrors
       if (error?.response?.insertErrors) {
         this.logger.error(`BigQuery insertErrors: ${JSON.stringify(error.response.insertErrors)}`);
       }
-      if (error?.errors) {
-        this.logger.error(`BigQuery errors detail: ${JSON.stringify(error.errors)}`);
+    }
+  }
+
+  /**
+   * Converts an ISO timestamp string to BigQuery-compatible format.
+   * BigQuery streaming insert expects: "YYYY-MM-DD HH:MM:SS.SSSSSS UTC"
+   * or a numeric Unix epoch (seconds with microsecond precision).
+   */
+  private toBigQueryTimestamp(isoString: string): string {
+    try {
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) {
+        this.logger.warn(`Invalid timestamp "${isoString}", using current time`);
+        return BigQuery.timestamp(new Date()).value;
       }
+      return BigQuery.timestamp(date).value;
+    } catch {
+      this.logger.warn(`Error converting timestamp "${isoString}", using current time`);
+      return BigQuery.timestamp(new Date()).value;
     }
   }
 }

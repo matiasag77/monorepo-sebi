@@ -22,23 +22,77 @@ export class ChatService {
 
   private readonly adkUrl: string;
   private authClient: IdTokenClient | null = null;
+  private readonly useWIF: boolean;
 
   constructor(private readonly configService: ConfigService) {
-    this.adkUrl = this.configService.get<string>('ADK_API_URL', 'https://adktestv1-367988788237.us-central1.run.app');
-    this.logger.log(`ChatService initialized - ADK_API_URL configured: ${this.adkUrl ? 'YES' : 'NO (EMPTY!)'}`);
+    this.adkUrl =
+      this.configService.get<string>('ADK_API_URL') ||
+      this.configService.get<string>('SEBI_AGENT_URL') ||
+      'https://adktestv1-367988788237.us-central1.run.app';
+    this.useWIF = this.configService.get<string>('USE_WORKLOAD_IDENTITY') === 'true';
+    this.logger.log(`ChatService initialized - ADK URL configured: ${this.adkUrl ? 'YES' : 'NO (EMPTY!)'}`);
+    this.logger.log(`ChatService - WIF enabled: ${this.useWIF}`);
     if (this.adkUrl) {
-      this.logger.log(`ADK_API_URL: ${this.adkUrl}`);
+      this.logger.log(`ADK URL: ${this.adkUrl}`);
       this.initAuthClient();
     } else {
-      this.logger.error('ADK_API_URL is empty or not configured! AI service will not work.');
+      this.logger.error('ADK URL is empty or not configured! AI service will not work.');
     }
+  }
+
+  /**
+   * Construye un GoogleAuth configurado para WIF (Workload Identity Federation)
+   * usando el token de K8s IRSA para intercambio AWS→GCP.
+   */
+  private buildWIFGoogleAuth(): GoogleAuth {
+    const audience = this.configService.get<string>('WORKLOAD_IDENTITY_AUDIENCE');
+    const serviceAccountEmail = this.configService.get<string>(
+      'GOOGLE_SERVICE_ACCOUNT_EMAIL',
+      'sebi-app-prod@forus-cl-ti-geminienterprise.iam.gserviceaccount.com',
+    );
+    const awsTokenFile =
+      this.configService.get<string>('AWS_WEB_IDENTITY_TOKEN_FILE') ||
+      '/var/run/secrets/eks.amazonaws.com/serviceaccount/token';
+
+    if (!audience) {
+      throw new Error('WORKLOAD_IDENTITY_AUDIENCE not configured. Check your configmap.');
+    }
+
+    return new GoogleAuth({
+      credentials: {
+        type: 'external_account',
+        audience,
+        subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+        token_url: 'https://sts.googleapis.com/v1/token',
+        credential_source: {
+          file: awsTokenFile,
+        },
+        service_account_impersonation_url:
+          `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${serviceAccountEmail}:generateAccessToken`,
+      } as any,
+    });
   }
 
   /**
    * Inicializa el cliente de autenticación de Google para Cloud Run.
    * Se cachea para reutilizar y refrescar tokens automáticamente.
+   * En producción con WIF, usa ExternalAccountClient para el intercambio AWS→GCP.
    */
   private async initAuthClient(): Promise<void> {
+    if (this.useWIF) {
+      this.logger.log('Initializing auth client with Workload Identity Federation (WIF)...');
+      try {
+        const auth = this.buildWIFGoogleAuth();
+        this.authClient = await auth.getIdTokenClient(this.adkUrl);
+        this.logger.log('✓ WIF Auth client initialized successfully for Cloud Run ADK');
+        return;
+      } catch (error) {
+        this.logger.error(`✗ WIF Auth client initialization failed: ${error instanceof Error ? error.message : error}`);
+        this.logger.warn('Falling back to default GoogleAuth...');
+      }
+    }
+
+    // Default path (non-WIF or WIF fallback)
     try {
       const auth = new GoogleAuth();
       this.authClient = await auth.getIdTokenClient(this.adkUrl);
@@ -71,6 +125,19 @@ export class ChatService {
     }
     // Retry initialization in case it failed during constructor
     this.logger.log('Auth client not ready, retrying initialization...');
+
+    if (this.useWIF) {
+      try {
+        const auth = this.buildWIFGoogleAuth();
+        this.authClient = await auth.getIdTokenClient(this.adkUrl);
+        this.logger.log('✓ WIF Auth client initialized on retry');
+        return this.authClient;
+      } catch (error) {
+        this.logger.error(`WIF Auth client retry failed: ${error instanceof Error ? error.message : error}`);
+        this.logger.warn('Falling back to default GoogleAuth on retry...');
+      }
+    }
+
     try {
       const auth = new GoogleAuth();
       this.authClient = await auth.getIdTokenClient(this.adkUrl);

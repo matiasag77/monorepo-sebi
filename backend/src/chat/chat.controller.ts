@@ -59,7 +59,7 @@ export class ChatController {
   }
 
   @Get('suggestions')
-  @ApiOperation({ summary: 'Get suggested messages for the chatbot' })
+  @ApiOperation({ summary: 'Get suggested messages (deprecated - use /suggestions endpoint)' })
   @ApiResponse({
     status: 200,
     description: 'List of suggested messages',
@@ -73,6 +73,7 @@ export class ChatController {
     },
   })
   getSuggestions() {
+    // Mantenido por compatibilidad - el nuevo endpoint es /suggestions
     return { suggestions: this.chatService.getSuggestedMessages() };
   }
 }

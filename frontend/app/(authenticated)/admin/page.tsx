@@ -16,6 +16,7 @@ import {
   Clock,
   TrendingUp,
   UserCheck,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import * as api from "@/lib/api"
@@ -98,7 +99,7 @@ export default function AdminDashboard() {
     if (diffMins < 60) return `hace ${diffMins}m`
     const diffHours = Math.floor(diffMins / 60)
     if (diffHours < 24) return `hace ${diffHours}h`
-    return d.toLocaleDateString("es-AR", { month: "short", day: "numeric" })
+    return d.toLocaleDateString("es-CL", { month: "short", day: "numeric" })
   }
 
   const getActionBadgeVariant = (action: string) => {
@@ -213,7 +214,7 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Quick Links */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
           <Link href="/admin/users">
             <Card className="p-5 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all duration-200 cursor-pointer group">
               <div className="flex items-center gap-3">
@@ -224,9 +225,25 @@ export default function AdminDashboard() {
                   <h3 className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors">
                     Gestión de Usuarios
                   </h3>
-                  <p className="text-xs text-zinc-500">Gestioná usuarios, roles y permisos</p>
+                  <p className="text-xs text-zinc-500">Gestiona usuarios, roles y permisos</p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
+              </div>
+            </Card>
+          </Link>
+          <Link href="/admin/suggestions">
+            <Card className="p-5 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all duration-200 cursor-pointer group">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-purple-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-white group-hover:text-purple-400 transition-colors">
+                    Sugerencias
+                  </h3>
+                  <p className="text-xs text-zinc-500">Gestiona las consultas sugeridas por defecto</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
               </div>
             </Card>
           </Link>

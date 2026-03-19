@@ -426,7 +426,7 @@ export default function WebRunSebi({
       setMessages((prev) => [...prev, botMessage])
     } catch {
       const errorMessage: Message = {
-        text: "Lo siento, ocurrio un error al procesar tu solicitud. Por favor, intenta de nuevo.",
+        text: "Ocurrió un error al procesar tu solicitud. Por favor, intenta de nuevo.",
         sender: "bot",
         sentAt: userMessage.sentAt,
         receivedAt: new Date().toISOString(),
@@ -461,7 +461,7 @@ export default function WebRunSebi({
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">SEBI</h2>
             <p className="text-zinc-400 text-center mb-4 max-w-md">
-              Preguntame lo que quieras sobre datos.
+              Consulta lo que necesites sobre tus datos.
             </p>
           </div>
         ) : (

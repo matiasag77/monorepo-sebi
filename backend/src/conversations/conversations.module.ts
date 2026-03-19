@@ -7,6 +7,7 @@ import {
   ConversationSchema,
 } from './schemas/conversation.schema';
 import { ChatModule } from '../chat/chat.module';
+import { SuggestionsModule } from '../suggestions/suggestions.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ChatModule } from '../chat/chat.module';
       { name: Conversation.name, schema: ConversationSchema },
     ]),
     ChatModule,
+    SuggestionsModule,
   ],
   controllers: [ConversationsController],
   providers: [ConversationsService],

@@ -173,7 +173,7 @@ export default function UsersPage() {
 
   const formatDate = (date?: string) => {
     if (!date) return "Nunca"
-    return new Date(date).toLocaleDateString("es-AR", {
+    return new Date(date).toLocaleDateString("es-CL", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -199,7 +199,7 @@ export default function UsersPage() {
               <h1 className="text-2xl font-bold text-white">Gestión de Usuarios</h1>
             </div>
             <p className="text-sm text-zinc-400 ml-9">
-              Gestioná cuentas de usuario, roles y permisos
+              Gestiona cuentas de usuario, roles y permisos
             </p>
           </div>
           <Button onClick={() => setShowRegister(true)}>
@@ -246,7 +246,7 @@ export default function UsersPage() {
               {search ? "Sin usuarios encontrados" : "Sin usuarios aún"}
             </h3>
             <p className="text-sm text-zinc-400">
-              {search ? "Intentá ajustar tu búsqueda" : "Agregá tu primer usuario para comenzar"}
+              {search ? "Intenta ajustar tu búsqueda" : "Agrega tu primer usuario para comenzar"}
             </p>
           </div>
         ) : (
@@ -471,7 +471,7 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle>Eliminar Usuario</DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de que querés eliminar a <strong>{deleteUser?.name}</strong> ({deleteUser?.email})? Esta acción no se puede deshacer.
+              ¿Estás seguro de que deseas eliminar a <strong>{deleteUser?.name}</strong> ({deleteUser?.email})? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -502,7 +502,7 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle>Registrar Nuevo Usuario</DialogTitle>
             <DialogDescription>
-              Creá una nueva cuenta de usuario con email y contraseña.
+              Crea una nueva cuenta de usuario con correo electrónico y contraseña.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleRegister} className="space-y-4">

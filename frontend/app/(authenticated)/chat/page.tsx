@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback, Suspense } from "react"
+import { useState, useEffect, useRef, useCallback, memo, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,7 @@ import {
   MessageSquare,
   ArrowDown,
   AlertTriangle,
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import * as api from "@/lib/api"
@@ -44,7 +45,7 @@ function TypingIndicator() {
   )
 }
 
-function MarkdownContent({ content }: { content: string }) {
+const MarkdownContent = memo(function MarkdownContent({ content }: { content: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -128,9 +129,9 @@ function MarkdownContent({ content }: { content: string }) {
       {content}
     </ReactMarkdown>
   )
-}
+})
 
-function DynamicTable({ data }: { data: Record<string, unknown>[] }) {
+const DynamicTable = memo(function DynamicTable({ data }: { data: Record<string, unknown>[] }) {
   if (!data || data.length === 0) return null
   const headers = Object.keys(data[0])
 
@@ -162,7 +163,7 @@ function DynamicTable({ data }: { data: Record<string, unknown>[] }) {
       </table>
     </div>
   )
-}
+})
 
 function IntermediateSteps({ steps }: { steps: string[] }) {
   if (!steps || steps.length === 0) return null
@@ -202,7 +203,7 @@ function AdkErrorBanner({ error }: { error: string }) {
   )
 }
 
-function MessageBubble({ message, isUser }: { message: Message; isUser: boolean }) {
+const MessageBubble = memo(function MessageBubble({ message, isUser }: { message: Message; isUser: boolean }) {
   return (
     <div
       className={cn(
@@ -248,33 +249,51 @@ function MessageBubble({ message, isUser }: { message: Message; isUser: boolean 
       </div>
     </div>
   )
-}
+})
 
 function SuggestionChip({
   suggestion,
   onClick,
+  onDelete,
 }: {
   suggestion: ChatSuggestion
   onClick: () => void
+  onDelete?: () => void
 }) {
   return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass text-sm text-zinc-300 hover:text-white hover:border-blue-500/30 transition-all duration-200 text-left group"
-    >
-      <Sparkles className="w-4 h-4 text-blue-400 shrink-0 group-hover:scale-110 transition-transform" />
-      <span className="line-clamp-2">{suggestion.text}</span>
-    </button>
+    <div className="relative group/chip">
+      <button
+        onClick={onClick}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass text-sm text-zinc-300 hover:text-white hover:border-blue-500/30 transition-all duration-200 text-left group w-full"
+      >
+        <Sparkles className="w-4 h-4 text-blue-400 shrink-0 group-hover:scale-110 transition-transform" />
+        <span className="line-clamp-2 pr-4">{suggestion.text}</span>
+      </button>
+      {onDelete && !suggestion.isDefault && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-500 hover:text-red-400 hover:border-red-500/30 opacity-0 group-hover/chip:opacity-100 transition-all"
+          title="Eliminar sugerencia"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
+    </div>
   )
 }
 
 function WelcomeState({
   suggestions,
   onSuggestionClick,
+  onSuggestionDelete,
   loadingSuggestions,
 }: {
   suggestions: ChatSuggestion[]
   onSuggestionClick: (text: string) => void
+  onSuggestionDelete: (id: string) => void
   loadingSuggestions: boolean
 }) {
   return (
@@ -286,7 +305,7 @@ function WelcomeState({
         ¿En qué puedo ayudarte hoy?
       </h2>
       <p className="text-zinc-400 text-center mb-8 max-w-md">
-        Preguntame lo que quieras sobre datos.
+        Consulta lo que necesites sobre tus datos.
       </p>
 
       {loadingSuggestions ? (
@@ -302,6 +321,7 @@ function WelcomeState({
               key={s.id}
               suggestion={s}
               onClick={() => onSuggestionClick(s.text)}
+              onDelete={() => onSuggestionDelete(s.id)}
             />
           ))}
         </div>
@@ -425,13 +445,22 @@ function ChatPage() {
       const errorMessage: Message = {
         role: "assistant",
         content:
-          "Lo siento, ocurrió un error al procesar tu solicitud. Por favor, intentá de nuevo.",
+          "Ocurrió un error al procesar tu solicitud. Por favor, intenta de nuevo.",
         timestamp: new Date().toISOString(),
       }
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
       inputRef.current?.focus()
+    }
+  }
+
+  const handleDeleteSuggestion = async (id: string) => {
+    try {
+      await api.deleteSuggestion(id)
+      setSuggestions((prev) => prev.filter((s) => s.id !== id))
+    } catch {
+      // silently fail
     }
   }
 
@@ -487,6 +516,7 @@ function ChatPage() {
           <WelcomeState
             suggestions={suggestions}
             onSuggestionClick={(text) => handleSend(text)}
+            onSuggestionDelete={handleDeleteSuggestion}
             loadingSuggestions={loadingSuggestions}
           />
         ) : (
@@ -525,13 +555,22 @@ function ChatPage() {
         <div className="px-4 pb-2 max-w-3xl mx-auto w-full">
           <div className="flex gap-2 overflow-x-auto pb-1">
             {suggestions.slice(0, 3).map((s) => (
-              <button
-                key={s.id}
-                onClick={() => handleSend(s.text)}
-                className="shrink-0 text-xs px-3 py-1.5 rounded-full border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors"
-              >
-                {s.text.length > 40 ? s.text.slice(0, 40) + "..." : s.text}
-              </button>
+              <div key={s.id} className="shrink-0 relative group/inline">
+                <button
+                  onClick={() => handleSend(s.text)}
+                  className="text-xs px-3 py-1.5 rounded-full border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors pr-6"
+                >
+                  {s.text.length > 40 ? s.text.slice(0, 40) + "..." : s.text}
+                </button>
+                {!s.isDefault && (
+                  <button
+                    onClick={() => handleDeleteSuggestion(s.id)}
+                    className="absolute top-0 right-0 w-4 h-4 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-500 hover:text-red-400 opacity-0 group-hover/inline:opacity-100 transition-all"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </div>
@@ -546,7 +585,7 @@ function ChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Escribí tu mensaje..."
+              placeholder="Escribe tu mensaje..."
               className="flex-1 border-0 bg-transparent focus-visible:ring-0 text-white placeholder:text-zinc-500"
               disabled={isLoading}
               autoFocus
@@ -570,7 +609,7 @@ function ChatPage() {
             </Button>
           </div>
           <p className="text-[11px] text-zinc-600 text-center mt-2">
-            La IA puede cometer errores. Considerá verificar la información importante.
+            La IA puede cometer errores. Considera verificar la información importante.
           </p>
         </div>
       </div>

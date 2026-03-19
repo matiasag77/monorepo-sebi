@@ -424,7 +424,7 @@ export default function DemoSebiPage() {
     await new Promise((r) => setTimeout(r, 2500))
 
     const botMessage: Message = {
-      text: `Recibido: **"${text}"**\n\nEsta es una respuesta simulada. En produccion, este mensaje seria generado por el agente SEBI a traves de la API ADK.\n\n- El componente soporta **Markdown** completo\n- Las tablas se generan dinamicamente\n- Los chips de follow-up son interactivos`,
+      text: `Recibido: **"${text}"**\n\nEsta es una respuesta simulada. En producción, este mensaje será generado por el agente SEBI a través de la API ADK.\n\n- El componente soporta **Markdown** completo\n- Las tablas se generan dinámicamente\n- Los chips de seguimiento son interactivos`,
       sender: "bot",
       tables: [
         { metrica: "Consultas hoy", valor: 142, variacion: 5.2 },
@@ -435,7 +435,7 @@ export default function DemoSebiPage() {
       confidence: 0.88,
       sources: ["Demo Data"],
       followUpQuestions: [
-        "Dame mas detalles",
+        "Más detalles",
         "Exportar datos",
       ],
       sentAt: userMessage.sentAt,

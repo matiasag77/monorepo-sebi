@@ -24,6 +24,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { SendMessageDto } from '../chat/dto/send-message.dto';
+import { SuggestionsService } from '../suggestions/suggestions.service';
 
 @ApiTags('Conversations')
 @ApiBearerAuth('JWT-auth')
@@ -37,6 +38,7 @@ export class ConversationsController {
     private readonly chatService: ChatService,
     private readonly bigQueryService: BigQueryService,
     private readonly trackingService: TrackingService,
+    private readonly suggestionsService: SuggestionsService,
   ) {}
 
   @Post()
@@ -123,18 +125,13 @@ export class ConversationsController {
     this.logger.log(`POST /api/conversations/${id}/messages - userId=${req.user.userId}, contentLength=${sendMessageDto.content?.length}`);
 
     try {
-      // Verify ownership before adding messages
-      this.logger.log(`Step 1: Verifying conversation ownership...`);
-      await this.conversationsService.findById(id, req.user.userId);
-      this.logger.log(`Step 1: Ownership verified`);
-
-      // Add user message
-      this.logger.log(`Step 2: Adding user message to conversation...`);
+      // Add user message (also verifies ownership via userId filter)
+      this.logger.log(`Step 1: Adding user message to conversation...`);
       await this.conversationsService.addMessage(id, req.user.userId, 'user', sendMessageDto.content);
-      this.logger.log(`Step 2: User message added`);
+      this.logger.log(`Step 1: User message added`);
 
       // Get AI response (pass userId and conversationId as sessionId for ADK)
-      this.logger.log(`Step 3: Calling ChatService.sendMessage...`);
+      this.logger.log(`Step 2: Calling ChatService.sendMessage...`);
       const aiStartTime = Date.now();
       const aiResult = await this.chatService.sendMessage(
         sendMessageDto.content,
@@ -142,17 +139,22 @@ export class ConversationsController {
         id, // use conversationId as ADK sessionId for continuity
       );
       const aiDuration = Date.now() - aiStartTime;
-      this.logger.log(`Step 3: AI response received in ${aiDuration}ms - responseLength=${aiResult.response?.length}, hasStructured=${!!aiResult.structured}`);
+      this.logger.log(`Step 2: AI response received in ${aiDuration}ms - responseLength=${aiResult.response?.length}, hasStructured=${!!aiResult.structured}`);
 
       // Add assistant message
-      this.logger.log(`Step 4: Adding assistant message to conversation...`);
+      this.logger.log(`Step 3: Adding assistant message to conversation...`);
       const conversation = await this.conversationsService.addMessage(
         id,
         req.user.userId,
         'assistant',
         aiResult.response,
       );
-      this.logger.log(`Step 4: Assistant message added`);
+      this.logger.log(`Step 3: Assistant message added`);
+
+      // Save user query as suggestion (fire and forget)
+      this.suggestionsService
+        .addUserQuery(req.user.userId, sendMessageDto.content)
+        .catch((err) => this.logger.warn(`Suggestion save failed: ${err}`));
 
       // Log chat_message event (fire and forget)
       this.trackingService

@@ -150,7 +150,7 @@ export default function HistoryPage() {
     if (diffHours < 1) return "Ahora mismo"
     if (diffHours < 24) return `hace ${Math.floor(diffHours)}h`
     if (diffHours < 48) return "Ayer"
-    return d.toLocaleDateString("es-AR", {
+    return d.toLocaleDateString("es-CL", {
       month: "short",
       day: "numeric",
       year: d.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
@@ -166,7 +166,7 @@ export default function HistoryPage() {
           <h1 className="text-2xl font-bold text-white">Historial de Conversaciones</h1>
         </div>
         <p className="text-sm text-zinc-400 ml-9">
-          Explorá y gestioná tus conversaciones anteriores
+          Explora y gestiona tus conversaciones anteriores
         </p>
       </div>
 
@@ -205,8 +205,8 @@ export default function HistoryPage() {
             </h3>
             <p className="text-sm text-zinc-400 max-w-sm">
               {search
-                ? "Intentá ajustar los términos de búsqueda"
-                : "Iniciá un nuevo chat para comenzar tu historial de conversaciones"}
+                ? "Intenta ajustar los términos de búsqueda"
+                : "Inicia un nuevo chat para comenzar tu historial de conversaciones"}
             </p>
             {!search && (
               <Button
@@ -304,7 +304,7 @@ export default function HistoryPage() {
           <DialogHeader>
             <DialogTitle>Eliminar Conversación</DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de que querés eliminar esta conversación? Esta acción no se puede deshacer.
+              ¿Estás seguro de que deseas eliminar esta conversación? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -335,7 +335,7 @@ export default function HistoryPage() {
           <DialogHeader>
             <DialogTitle>Renombrar Conversación</DialogTitle>
             <DialogDescription>
-              Ingresá un nuevo título para esta conversación.
+              Ingresa un nuevo título para esta conversación.
             </DialogDescription>
           </DialogHeader>
           <Input

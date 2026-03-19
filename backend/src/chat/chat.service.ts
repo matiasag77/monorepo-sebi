@@ -21,6 +21,7 @@ export class ChatService {
   private readonly logger = new Logger(ChatService.name);
 
   private readonly adkUrl: string;
+  private readonly appName: string;
   private authClient: IdTokenClient | null = null;
   private readonly useWIF: boolean;
 
@@ -29,9 +30,10 @@ export class ChatService {
       this.configService.get<string>('ADK_API_URL') ||
       this.configService.get<string>('SEBI_AGENT_URL') ||
       'https://adktestv1-367988788237.us-central1.run.app';
+    this.appName = this.configService.get<string>('APP_NAME', 'SEBI');
     this.useWIF = this.configService.get<string>('USE_WORKLOAD_IDENTITY') === 'true';
     this.logger.log(`ChatService initialized - ADK URL configured: ${this.adkUrl ? 'YES' : 'NO (EMPTY!)'}`);
-    this.logger.log(`ChatService - WIF enabled: ${this.useWIF}`);
+    this.logger.log(`ChatService - App name: ${this.appName}, WIF enabled: ${this.useWIF}`);
     if (this.adkUrl) {
       this.logger.log(`ADK URL: ${this.adkUrl}`);
       this.initAuthClient();
@@ -235,7 +237,7 @@ export class ChatService {
     userId: string,
     sessionId: string,
   ): Promise<void> {
-    const sessionUrl = `${this.adkUrl}/apps/data_agent_app/users/${userId}/sessions/${sessionId}`;
+    const sessionUrl = `${this.adkUrl}/apps/${this.appName}/users/${userId}/sessions/${sessionId}`;
     this.logger.log(`initAdkSession - URL: ${sessionUrl}, userId=${userId}, sessionId=${sessionId}`);
     try {
       const res = await this.makeAuthenticatedRequest(sessionUrl, {
@@ -359,7 +361,7 @@ export class ChatService {
       // 2. Send message to ADK via /run_sse
       const runUrl = `${this.adkUrl}/run_sse`;
       const payload = {
-        app_name: 'data_agent_app',
+        app_name: this.appName,
         user_id: effectiveUserId,
         session_id: effectiveSessionId,
         new_message: {

@@ -17,6 +17,34 @@ export class Message {
   @ApiProperty()
   @Prop({ default: () => new Date() })
   timestamp: Date;
+
+  @ApiProperty({ required: false })
+  @Prop({ type: [Object], required: false })
+  table?: Record<string, unknown>[];
+
+  @ApiProperty({ required: false })
+  @Prop({ type: Object, required: false })
+  chart?: Record<string, unknown>;
+
+  @ApiProperty({ required: false })
+  @Prop({ required: false })
+  proactivo?: string;
+
+  @ApiProperty({ required: false })
+  @Prop({ required: false })
+  context?: string;
+
+  @ApiProperty({ required: false })
+  @Prop({ type: [String], required: false })
+  intermediateSteps?: string[];
+
+  @ApiProperty({ required: false })
+  @Prop({ required: false })
+  fallbackUsed?: boolean;
+
+  @ApiProperty({ required: false })
+  @Prop({ required: false })
+  adkError?: string;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(Message);

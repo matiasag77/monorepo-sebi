@@ -76,12 +76,37 @@ export class ConversationsService {
     userId: string,
     role: 'user' | 'assistant',
     content: string,
+    structured?: {
+      table?: Record<string, unknown>[];
+      chart?: Record<string, unknown>;
+      proactivo?: string;
+      context?: string;
+      intermediateSteps?: string[];
+      fallbackUsed?: boolean;
+      adkError?: string;
+    },
   ): Promise<ConversationDocument> {
+    const message: Record<string, unknown> = {
+      role,
+      content,
+      timestamp: new Date(),
+    };
+
+    if (structured) {
+      if (structured.table) message.table = structured.table;
+      if (structured.chart) message.chart = structured.chart;
+      if (structured.proactivo) message.proactivo = structured.proactivo;
+      if (structured.context) message.context = structured.context;
+      if (structured.intermediateSteps) message.intermediateSteps = structured.intermediateSteps;
+      if (structured.fallbackUsed) message.fallbackUsed = structured.fallbackUsed;
+      if (structured.adkError) message.adkError = structured.adkError;
+    }
+
     const conversation = await this.conversationModel
       .findOneAndUpdate(
         { _id: id, userId },
         {
-          $push: { messages: { role, content, timestamp: new Date() } },
+          $push: { messages: message },
           $set: { lastMessage: content },
         },
         { new: true },

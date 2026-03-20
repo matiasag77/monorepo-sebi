@@ -362,6 +362,13 @@ function ChatPage() {
               role: m.role as "user" | "assistant",
               content: m.content,
               timestamp: m.timestamp,
+              table: m.table,
+              chart: m.chart,
+              proactivo: m.proactivo,
+              context: m.context,
+              intermediateSteps: m.intermediateSteps,
+              fallbackUsed: m.fallbackUsed,
+              adkError: m.adkError,
             }))
           )
         })

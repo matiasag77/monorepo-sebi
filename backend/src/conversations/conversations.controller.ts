@@ -141,13 +141,27 @@ export class ConversationsController {
       const aiDuration = Date.now() - aiStartTime;
       this.logger.log(`Step 2: AI response received in ${aiDuration}ms - responseLength=${aiResult.response?.length}, hasStructured=${!!aiResult.structured}`);
 
-      // Add assistant message
+      // Add assistant message (include structured data for persistence)
       this.logger.log(`Step 3: Adding assistant message to conversation...`);
+      const structuredData = aiResult.structured
+        ? {
+            table: aiResult.structured.table,
+            chart: aiResult.structured.chart,
+            proactivo: aiResult.structured.proactivo,
+            context: aiResult.structured.context,
+            intermediateSteps: aiResult.structured.intermediateSteps,
+          }
+        : undefined;
+
       const conversation = await this.conversationsService.addMessage(
         id,
         req.user.userId,
         'assistant',
         aiResult.response,
+        {
+          ...structuredData,
+          ...(aiResult.fallbackUsed ? { fallbackUsed: true, adkError: aiResult.adkError } : {}),
+        },
       );
       this.logger.log(`Step 3: Assistant message added`);
 

@@ -145,10 +145,10 @@ export class ConversationsController {
       this.logger.log(`Step 3: Adding assistant message to conversation...`);
       const structuredData = aiResult.structured
         ? {
-            table: aiResult.structured.table,
-            chart: aiResult.structured.chart,
-            proactivo: aiResult.structured.proactivo,
-            context: aiResult.structured.context,
+            table: aiResult.structured.table ?? undefined,
+            chart: aiResult.structured.chart ?? undefined,
+            proactivo: aiResult.structured.proactivo ?? undefined,
+            context: aiResult.structured.context ?? undefined,
             intermediateSteps: aiResult.structured.intermediateSteps,
           }
         : undefined;

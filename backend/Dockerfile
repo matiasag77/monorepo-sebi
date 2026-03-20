@@ -6,7 +6,7 @@ FROM base AS deps
 WORKDIR /app
 
 # Copiar solo archivos de dependencias
-COPY package*.json ./
+COPY backend/package*.json ./
 
 # Instalar dependencias separadas (prod y dev ahora, luego se separan)
 RUN npm ci
@@ -19,7 +19,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 
 # Copiar código fuente
-COPY . .
+COPY backend/ .
 
 # Build de NestJS
 RUN npm run build
@@ -28,7 +28,7 @@ RUN npm run build
 FROM base AS prod-deps
 WORKDIR /app
 
-COPY package*.json ./
+COPY backend/package*.json ./
 
 # Instalar solo dependencias de producción
 RUN npm ci --only=production && npm cache clean --force

@@ -23,6 +23,9 @@ export interface Message {
   intermediateSteps?: string[];
   fallbackUsed?: boolean;
   adkError?: string;
+  confidence?: number;
+  sources?: string[];
+  followUpQuestions?: string[];
 }
 
 export interface Conversation {

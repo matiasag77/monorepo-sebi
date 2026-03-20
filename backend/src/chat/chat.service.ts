@@ -9,6 +9,9 @@ export interface AdkStructuredResponse {
   chart?: Record<string, unknown> | null;
   proactivo?: string | null;
   intermediateSteps?: string[];
+  confidence?: number;
+  sources?: string[];
+  followUpQuestions?: string[];
 }
 
 export interface SebiAdkResponse {
@@ -130,6 +133,10 @@ export class ChatService {
       }
     }
 
+    const confidence = (finalAnswerData['confidence'] as number) ?? undefined;
+    const sources = (finalAnswerData['sources'] as string[]) ?? undefined;
+    const followUpQuestions = (finalAnswerData['follow_up_questions'] as string[]) ?? undefined;
+
     return {
       answer: (finalAnswerData['answer'] as string) ?? 'Procesamiento completado.',
       context: (finalAnswerData['context'] as string) ?? null,
@@ -137,6 +144,9 @@ export class ChatService {
       chart: (finalAnswerData['chart'] as Record<string, unknown> | null) ?? null,
       proactivo: (finalAnswerData['proactivo'] as string) ?? null,
       intermediateSteps: intermediateActions.length > 0 ? intermediateActions : undefined,
+      confidence,
+      sources,
+      followUpQuestions,
     };
   }
 

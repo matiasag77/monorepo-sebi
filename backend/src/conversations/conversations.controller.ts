@@ -150,6 +150,9 @@ export class ConversationsController {
             proactivo: aiResult.structured.proactivo,
             context: aiResult.structured.context,
             intermediateSteps: aiResult.structured.intermediateSteps,
+            confidence: aiResult.structured.confidence,
+            sources: aiResult.structured.sources,
+            followUpQuestions: aiResult.structured.followUpQuestions,
           }
         : undefined;
 
@@ -204,6 +207,9 @@ export class ConversationsController {
               proactivo: aiResult.structured.proactivo,
               context: aiResult.structured.context,
               intermediateSteps: aiResult.structured.intermediateSteps,
+              confidence: aiResult.structured.confidence,
+              sources: aiResult.structured.sources,
+              followUpQuestions: aiResult.structured.followUpQuestions,
             }
           : {}),
         // Fallback API info when ADK failed

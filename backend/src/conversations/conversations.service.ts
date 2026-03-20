@@ -84,6 +84,9 @@ export class ConversationsService {
       intermediateSteps?: string[];
       fallbackUsed?: boolean;
       adkError?: string;
+      confidence?: number;
+      sources?: string[];
+      followUpQuestions?: string[];
     },
   ): Promise<ConversationDocument> {
     const message: Record<string, unknown> = {
@@ -100,6 +103,9 @@ export class ConversationsService {
       if (structured.intermediateSteps) message.intermediateSteps = structured.intermediateSteps;
       if (structured.fallbackUsed) message.fallbackUsed = structured.fallbackUsed;
       if (structured.adkError) message.adkError = structured.adkError;
+      if (structured.confidence != null) message.confidence = structured.confidence;
+      if (structured.sources?.length) message.sources = structured.sources;
+      if (structured.followUpQuestions?.length) message.followUpQuestions = structured.followUpQuestions;
     }
 
     const conversation = await this.conversationModel

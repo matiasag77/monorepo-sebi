@@ -45,6 +45,18 @@ export class Message {
   @ApiProperty({ required: false })
   @Prop({ required: false })
   adkError?: string;
+
+  @ApiProperty({ required: false })
+  @Prop({ required: false })
+  confidence?: number;
+
+  @ApiProperty({ required: false })
+  @Prop({ type: [String], required: false })
+  sources?: string[];
+
+  @ApiProperty({ required: false })
+  @Prop({ type: [String], required: false })
+  followUpQuestions?: string[];
 }
 
 export const MessageSchema = SchemaFactory.createForClass(Message);

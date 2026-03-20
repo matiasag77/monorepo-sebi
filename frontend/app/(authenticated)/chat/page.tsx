@@ -18,6 +18,7 @@ import {
   MessageSquare,
   ArrowDown,
   AlertTriangle,
+  RefreshCw,
   X,
   Clock,
 } from "lucide-react"
@@ -259,7 +260,7 @@ function SourcesList({ sources }: { sources: string[] }) {
   )
 }
 
-const MessageBubble = memo(function MessageBubble({ message, isUser, onFollowUp }: { message: Message; isUser: boolean; onFollowUp?: (text: string) => void }) {
+const MessageBubble = memo(function MessageBubble({ message, isUser, onFollowUp, onRetry }: { message: Message; isUser: boolean; onFollowUp?: (text: string) => void; onRetry?: () => void }) {
   return (
     <div className="animate-fade-in-up">
       <div
@@ -312,17 +313,29 @@ const MessageBubble = memo(function MessageBubble({ message, isUser, onFollowUp 
               {message.proactivo && <ProactiveSuggestion text={message.proactivo} />}
 
               {(message.followUpQuestions || []).length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-zinc-700/50">
+                <div className="grid grid-cols-1 gap-2 mt-3 pt-3 border-t border-zinc-700/50">
                   {message.followUpQuestions!.map((q, i) => (
                     <button
                       key={i}
                       onClick={() => onFollowUp?.(q)}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 transition-colors"
+                      className="flex items-center justify-center gap-1.5 text-xs px-4 py-2.5 rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 transition-colors text-center min-h-[44px]"
                     >
-                      <Sparkles className="w-3 h-3" />
-                      {q}
+                      <Sparkles className="w-3 h-3 shrink-0" />
+                      <span>{q}</span>
                     </button>
                   ))}
+                </div>
+              )}
+
+              {message.isError && onRetry && (
+                <div className="mt-3 pt-3 border-t border-zinc-700/50">
+                  <button
+                    onClick={onRetry}
+                    className="flex items-center gap-1.5 text-xs px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Reintentar consulta
+                  </button>
                 </div>
               )}
             </>
@@ -545,6 +558,7 @@ function ChatPage() {
         content:
           "Ocurrió un error al procesar tu solicitud. Por favor, intenta de nuevo.",
         timestamp: new Date().toISOString(),
+        isError: true,
       }
       setMessages((prev) => [...prev, errorMessage])
     } finally {
@@ -630,6 +644,13 @@ function ChatPage() {
                   message={msg}
                   isUser={msg.role === "user"}
                   onFollowUp={(text) => handleSend(text)}
+                  onRetry={msg.isError ? () => {
+                    const lastUserMsg = [...messages].slice(0, i).reverse().find(m => m.role === "user")
+                    if (lastUserMsg) {
+                      setMessages((prev) => prev.filter((_, idx) => idx !== i))
+                      handleSend(lastUserMsg.content)
+                    }
+                  } : undefined}
                 />
               ))}
               {isLoading && <TypingIndicator />}

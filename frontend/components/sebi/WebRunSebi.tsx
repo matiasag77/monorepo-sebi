@@ -13,6 +13,7 @@ import {
   ArrowDown,
   Clock,
   Sparkles,
+  RefreshCw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
@@ -32,6 +33,7 @@ interface Message {
   context?: string | null
   sources?: string[]
   followUpQuestions?: string[]
+  isError?: boolean
   sentAt: string
   receivedAt?: string
 }
@@ -252,9 +254,11 @@ function TypingIndicator() {
 function MessageBubble({
   message,
   onFollowUp,
+  onRetry,
 }: {
   message: Message
   onFollowUp: (text: string) => void
+  onRetry?: () => void
 }) {
   const isUser = message.sender === "user"
 
@@ -313,17 +317,29 @@ function MessageBubble({
               <SourcesList sources={message.sources || []} />
 
               {(message.followUpQuestions || []).length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-zinc-700/50">
+                <div className="grid grid-cols-1 gap-2 mt-3 pt-3 border-t border-zinc-700/50">
                   {message.followUpQuestions!.map((q, i) => (
                     <button
                       key={i}
                       onClick={() => onFollowUp(q)}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 transition-colors"
+                      className="flex items-center justify-center gap-1.5 text-xs px-4 py-2.5 rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 transition-colors text-center min-h-[44px]"
                     >
-                      <Sparkles className="w-3 h-3" />
-                      {q}
+                      <Sparkles className="w-3 h-3 shrink-0" />
+                      <span>{q}</span>
                     </button>
                   ))}
+                </div>
+              )}
+
+              {message.isError && onRetry && (
+                <div className="mt-3 pt-3 border-t border-zinc-700/50">
+                  <button
+                    onClick={onRetry}
+                    className="flex items-center gap-1.5 text-xs px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Reintentar consulta
+                  </button>
                 </div>
               )}
             </>
@@ -428,6 +444,7 @@ export default function WebRunSebi({
       const errorMessage: Message = {
         text: "Ocurrió un error al procesar tu solicitud. Por favor, intenta de nuevo.",
         sender: "bot",
+        isError: true,
         sentAt: userMessage.sentAt,
         receivedAt: new Date().toISOString(),
       }
@@ -476,6 +493,13 @@ export default function WebRunSebi({
                   key={`${msg.sentAt}-${i}`}
                   message={msg}
                   onFollowUp={handleFollowUp}
+                  onRetry={msg.isError ? () => {
+                    const lastUserMsg = [...messages].slice(0, i).reverse().find(m => m.sender === "user")
+                    if (lastUserMsg) {
+                      setMessages((prev) => prev.filter((_, idx) => idx !== i))
+                      handleSend(lastUserMsg.text)
+                    }
+                  } : undefined}
                 />
               ))}
               {isLoading && <TypingIndicator />}

@@ -19,6 +19,7 @@ import {
   ArrowDown,
   AlertTriangle,
   X,
+  Clock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import * as api from "@/lib/api"
@@ -203,49 +204,133 @@ function AdkErrorBanner({ error }: { error: string }) {
   )
 }
 
-const MessageBubble = memo(function MessageBubble({ message, isUser }: { message: Message; isUser: boolean }) {
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+function Timestamp({ timestamp, isUser }: { timestamp: string; isUser: boolean }) {
   return (
     <div
       className={cn(
-        "flex items-start gap-3 animate-fade-in-up",
-        isUser ? "flex-row-reverse" : "flex-row"
+        "flex items-center gap-1 mt-1 text-[10px] text-zinc-500",
+        isUser ? "justify-end" : "justify-start"
       )}
     >
-      <Avatar className="w-8 h-8 shrink-0 mt-1">
-        <AvatarFallback
-          className={cn(
-            "text-xs",
-            isUser
-              ? "bg-zinc-700 text-zinc-300"
-              : "bg-gradient-to-br from-blue-500 to-blue-700 text-white"
-          )}
-        >
-          {isUser ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-        </AvatarFallback>
-      </Avatar>
+      <Clock className="w-3 h-3" />
+      <span>
+        {isUser
+          ? `Enviado ${formatTime(timestamp)}`
+          : `Recibido ${formatTime(timestamp)}`}
+      </span>
+    </div>
+  )
+}
+
+function ConfidenceBadge({ confidence }: { confidence: number }) {
+  const pct = Math.round(confidence * 100)
+  const color =
+    pct >= 80
+      ? "text-green-400 border-green-500/20 bg-green-500/10"
+      : pct >= 50
+        ? "text-amber-400 border-amber-500/20 bg-amber-500/10"
+        : "text-red-400 border-red-500/20 bg-red-500/10"
+  return (
+    <span
+      className={cn(
+        "text-[10px] px-2 py-0.5 rounded-full border inline-flex items-center gap-1",
+        color
+      )}
+    >
+      Confianza: {pct}%
+    </span>
+  )
+}
+
+function SourcesList({ sources }: { sources: string[] }) {
+  if (!sources || sources.length === 0) return null
+  return (
+    <div className="mt-2 text-[11px] text-zinc-500">
+      <span className="font-semibold text-zinc-400">Fuentes: </span>
+      {sources.join(" | ")}
+    </div>
+  )
+}
+
+const MessageBubble = memo(function MessageBubble({ message, isUser, onFollowUp }: { message: Message; isUser: boolean; onFollowUp?: (text: string) => void }) {
+  return (
+    <div className="animate-fade-in-up">
       <div
         className={cn(
-          "max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
-          isUser
-            ? "bg-blue-600 text-white rounded-tr-md whitespace-pre-wrap"
-            : "glass text-zinc-200 rounded-tl-md"
+          "flex items-start gap-3",
+          isUser ? "flex-row-reverse" : "flex-row"
         )}
       >
-        {isUser ? (
-          message.content
-        ) : (
-          <>
-            {message.fallbackUsed && message.adkError && (
-              <AdkErrorBanner error={message.adkError} />
+        <Avatar className="w-8 h-8 shrink-0 mt-1">
+          <AvatarFallback
+            className={cn(
+              "text-xs",
+              isUser
+                ? "bg-zinc-700 text-zinc-300"
+                : "bg-gradient-to-br from-blue-500 to-blue-700 text-white"
             )}
-            {message.intermediateSteps && (
-              <IntermediateSteps steps={message.intermediateSteps} />
-            )}
-            <MarkdownContent content={message.content} />
-            {message.table && <DynamicTable data={message.table} />}
-            {message.proactivo && <ProactiveSuggestion text={message.proactivo} />}
-          </>
-        )}
+          >
+            {isUser ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+          </AvatarFallback>
+        </Avatar>
+        <div
+          className={cn(
+            "max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
+            isUser
+              ? "bg-blue-600 text-white rounded-tr-md whitespace-pre-wrap"
+              : "glass text-zinc-200 rounded-tl-md"
+          )}
+        >
+          {isUser ? (
+            message.content
+          ) : (
+            <>
+              {message.fallbackUsed && message.adkError && (
+                <AdkErrorBanner error={message.adkError} />
+              )}
+              {message.intermediateSteps && (
+                <IntermediateSteps steps={message.intermediateSteps} />
+              )}
+              <MarkdownContent content={message.content} />
+              {message.table && <DynamicTable data={message.table} />}
+
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                {message.confidence != null && message.confidence > 0 && message.confidence < 1 && (
+                  <ConfidenceBadge confidence={message.confidence} />
+                )}
+              </div>
+
+              <SourcesList sources={message.sources || []} />
+
+              {message.proactivo && <ProactiveSuggestion text={message.proactivo} />}
+
+              {(message.followUpQuestions || []).length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-zinc-700/50">
+                  {message.followUpQuestions!.map((q, i) => (
+                    <button
+                      key={i}
+                      onClick={() => onFollowUp?.(q)}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 transition-colors"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+      <div className={cn("px-11", isUser ? "text-right" : "text-left")}>
+        <Timestamp timestamp={message.timestamp} isUser={isUser} />
       </div>
     </div>
   )
@@ -369,6 +454,9 @@ function ChatPage() {
               intermediateSteps: m.intermediateSteps,
               fallbackUsed: m.fallbackUsed,
               adkError: m.adkError,
+              confidence: m.confidence,
+              sources: m.sources,
+              followUpQuestions: m.followUpQuestions,
             }))
           )
         })
@@ -446,6 +534,9 @@ function ChatPage() {
         intermediateSteps: response.intermediateSteps,
         fallbackUsed: response.fallbackUsed,
         adkError: response.adkError,
+        confidence: response.confidence,
+        sources: response.sources,
+        followUpQuestions: response.followUpQuestions,
       }
       setMessages((prev) => [...prev, assistantMessage])
     } catch {
@@ -538,6 +629,7 @@ function ChatPage() {
                   key={`${msg.timestamp}-${i}`}
                   message={msg}
                   isUser={msg.role === "user"}
+                  onFollowUp={(text) => handleSend(text)}
                 />
               ))}
               {isLoading && <TypingIndicator />}

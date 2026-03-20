@@ -131,6 +131,9 @@ export interface SendMessageResponse {
   intermediateSteps?: string[]
   fallbackUsed?: boolean
   adkError?: string
+  confidence?: number
+  sources?: string[]
+  followUpQuestions?: string[]
 }
 
 export async function sendMessage(

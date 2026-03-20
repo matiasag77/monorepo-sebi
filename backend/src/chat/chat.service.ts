@@ -11,6 +11,17 @@ export interface AdkStructuredResponse {
   intermediateSteps?: string[];
 }
 
+export interface SebiAdkResponse {
+  answer: string;
+  context?: string | null;
+  tables: Record<string, unknown>[];
+  intermediate_steps: string[];
+  session_id: string;
+  confidence: number;
+  sources: string[];
+  follow_up_questions: string[];
+}
+
 export interface ChatResponse {
   response: string;
   structured?: AdkStructuredResponse;
@@ -228,6 +239,181 @@ export class ChatService {
       const fallback = await this.sendToFallbackApi(message);
       fallback.adkError = adkErrorMsg;
       return fallback;
+    }
+  }
+
+  /**
+   * Parsea la respuesta SSE del ADK con el formato completo esperado por el frontend SEBI.
+   * Acumula tablas de todos los bloques, extrae answer, context, confidence, sources y follow_up_questions.
+   */
+  private parseAdkSseResponseSebi(responseText: string, sessionId: string): SebiAdkResponse {
+    const lines = responseText
+      .split('\n')
+      .filter((line) => line.startsWith('data: '))
+      .map((line) => line.replace('data: ', '').trim());
+
+    this.logger.log(`[SEBI] parseAdkSseResponseSebi — total data lines: ${lines.length}`);
+    this.logger.debug(`[SEBI] Raw ADK response (first 2000 chars):\n${responseText.substring(0, 2000)}`);
+
+    const allTables: Record<string, unknown>[] = [];
+    const intermediateActions: string[] = [];
+    let finalAnswerData: Record<string, unknown> = {};
+
+    for (let idx = 0; idx < lines.length; idx++) {
+      const jsonStr = lines[idx];
+      try {
+        const block = JSON.parse(jsonStr);
+        this.logger.debug(`[SEBI] Block[${idx}] author=${block?.author} type=${block?.content?.role}`);
+
+        const parts = block?.content?.parts ?? [];
+
+        for (const part of parts) {
+          if (part.functionCall) {
+            const toolName = part.functionCall.name ?? 'unknown';
+            this.logger.log(`[SEBI] Tool call detected: ${toolName}`);
+            intermediateActions.push(`Ejecutando: ${toolName}...`);
+          }
+
+          if (part.text) {
+            const textContent: string = part.text;
+            this.logger.debug(`[SEBI] Text part (${textContent.length} chars): ${textContent.substring(0, 300)}`);
+            try {
+              if (textContent.includes('{')) {
+                const parsed = JSON.parse(textContent);
+                // Accumulate tables from every block
+                if (parsed.tables && Array.isArray(parsed.tables)) {
+                  this.logger.log(`[SEBI] Tables found in block[${idx}]: ${parsed.tables.length} rows`);
+                  allTables.push(...parsed.tables);
+                }
+                finalAnswerData = parsed;
+              }
+            } catch {
+              if (!finalAnswerData['answer']) {
+                finalAnswerData['answer'] = textContent;
+              }
+            }
+          }
+        }
+      } catch {
+        this.logger.warn(`[SEBI] Could not parse block[${idx}]: ${jsonStr.substring(0, 100)}`);
+        continue;
+      }
+    }
+
+    const answer = (finalAnswerData['answer'] as string) ?? 'Procesamiento completado.';
+    const confidence = (finalAnswerData['confidence'] as number) ?? 1.0;
+    const sources = (finalAnswerData['sources'] as string[]) ?? [];
+    const followUpQuestions = (finalAnswerData['follow_up_questions'] as string[]) ?? [];
+    const context = (finalAnswerData['context'] as string) ?? null;
+
+    this.logger.log(
+      `[SEBI] Parsed result — answer: ${answer.length} chars, tables: ${allTables.length}, steps: ${intermediateActions.length}, confidence: ${confidence}`,
+    );
+
+    return {
+      answer,
+      context,
+      tables: allTables,
+      intermediate_steps: intermediateActions,
+      session_id: sessionId,
+      confidence,
+      sources,
+      follow_up_questions: followUpQuestions,
+    };
+  }
+
+  /**
+   * Método público para el endpoint /v1/chat_sebi.
+   * Sigue la misma lógica que el backend Python: inicializa sesión, llama run_sse, parsea SSE.
+   */
+  async sendMessageSebi(
+    message: string,
+    userId?: string,
+    sessionId?: string,
+    email?: string,
+  ): Promise<SebiAdkResponse> {
+    const effectiveUserId = userId ?? 'sebi-user';
+    const effectiveSessionId = sessionId ?? `session-${Date.now()}`;
+
+    this.logger.log(
+      `[SEBI] sendMessageSebi — user=${effectiveUserId}, email=${email ?? 'N/A'}, session=${effectiveSessionId}, msgLen=${message?.length}`,
+    );
+    const startTime = Date.now();
+
+    if (!this.adkUrl) {
+      this.logger.error('[SEBI] ADK_API_URL is empty — cannot process request');
+      return {
+        answer: 'El servicio ADK no está configurado. Contacta al administrador.',
+        tables: [],
+        intermediate_steps: [],
+        session_id: effectiveSessionId,
+        confidence: 0,
+        sources: [],
+        follow_up_questions: [],
+      };
+    }
+
+    try {
+      // 1. Initialize ADK session
+      await this.initAdkSession(effectiveUserId, effectiveSessionId);
+
+      // 2. Build payload (matching Python backend)
+      const runUrl = `${this.adkUrl}/run_sse`;
+      const payload = {
+        app_name: this.appName,
+        user_id: effectiveUserId,
+        session_id: effectiveSessionId,
+        new_message: { role: 'user', parts: [{ text: message }] },
+        streaming: false,
+        state: {
+          session_id: effectiveSessionId,
+          user_prompt: message,
+          user_email: email ?? '',
+        },
+      };
+
+      this.logger.log(`[SEBI] Calling ADK run_sse — ${runUrl}`);
+      this.logger.debug(`[SEBI] Payload: ${JSON.stringify(payload)}`);
+
+      const fetchStart = Date.now();
+      const res = await this.gcpAuth.makeAuthenticatedRequest(runUrl, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        timeout: 300000,
+      });
+
+      this.logger.log(`[SEBI] ADK responded in ${Date.now() - fetchStart}ms — status=${res.status}`);
+      this.logger.log(`[SEBI] ADK response size: ${res.data?.length ?? 0} bytes`);
+
+      if (res.status >= 400) {
+        this.logger.error(`[SEBI] ADK error status=${res.status}, body: ${res.data?.substring(0, 500)}`);
+        return {
+          answer: `Error al conectar con el agente SEBI (HTTP ${res.status}). Intenta nuevamente.`,
+          tables: [],
+          intermediate_steps: [],
+          session_id: effectiveSessionId,
+          confidence: 0,
+          sources: [],
+          follow_up_questions: [],
+        };
+      }
+
+      // 3. Parse SSE response with full SEBI format
+      const result = this.parseAdkSseResponseSebi(res.data, effectiveSessionId);
+      this.logger.log(`[SEBI] sendMessageSebi completed in ${Date.now() - startTime}ms`);
+      return result;
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`[SEBI] sendMessageSebi FAILED: ${errMsg}`);
+      return {
+        answer: 'Ocurrió un error al procesar tu consulta. Por favor, intenta de nuevo.',
+        tables: [],
+        intermediate_steps: [],
+        session_id: effectiveSessionId,
+        confidence: 0,
+        sources: [],
+        follow_up_questions: [],
+      };
     }
   }
 

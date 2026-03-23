@@ -137,6 +137,7 @@ export class ConversationsController {
         sendMessageDto.content,
         req.user.userId,
         id, // use conversationId as ADK sessionId for continuity
+        req.user.email,
       );
       const aiDuration = Date.now() - aiStartTime;
       this.logger.log(`Step 2: AI response received in ${aiDuration}ms - responseLength=${aiResult.response?.length}, hasStructured=${!!aiResult.structured}`);

@@ -24,12 +24,12 @@ import { AppService } from './app.service';
       {
         name: 'short',
         ttl: 60000,
-        limit: 20,
+        limit: 120,
       },
       {
         name: 'long',
         ttl: 600000,
-        limit: 100,
+        limit: 600,
       },
     ]),
     MongooseModule.forRootAsync({

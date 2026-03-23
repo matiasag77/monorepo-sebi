@@ -26,7 +26,7 @@ function getToken(): string | null {
   return null
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}, retries = 2): Promise<T> {
   const currentToken = getToken()
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -50,6 +50,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         window.location.href = "/login"
       }
       throw new Error("Session expired. Please log in again.")
+    }
+    // Retry on 429 with exponential backoff
+    if (res.status === 429 && retries > 0) {
+      const retryAfter = res.headers.get("Retry-After")
+      const delay = retryAfter ? parseInt(retryAfter) * 1000 : 2000 * (3 - retries)
+      await new Promise((resolve) => setTimeout(resolve, delay))
+      return request<T>(path, options, retries - 1)
     }
     const error = await res.json().catch(() => ({ message: "Request failed" }))
     throw new Error(error.message || `HTTP ${res.status}`)

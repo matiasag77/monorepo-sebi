@@ -145,9 +145,18 @@ function flattenTableData(data: unknown[]): Record<string, unknown>[] {
   return flat
 }
 
-function formatCellValue(value: unknown): string {
-  if (value === null || value === undefined) return ""
-  if (typeof value === "number") return value.toLocaleString()
+function isNumericColumn(rows: Record<string, unknown>[], header: string): boolean {
+  return rows.some((row) => typeof row[header] === "number")
+}
+
+function formatCellValue(value: unknown, header: string): string {
+  if (value === null || value === undefined) return "-"
+  if (typeof value === "number") {
+    if (header.toLowerCase().includes("%")) {
+      return `${value.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+    }
+    return value.toLocaleString("es-CL")
+  }
   if (Array.isArray(value)) return value.join(", ")
   return String(value)
 }
@@ -161,12 +170,17 @@ const DynamicTable = memo(function DynamicTable({ data }: { data: Record<string,
   const headers = Object.keys(rows[0])
 
   return (
-    <div className="overflow-x-auto my-3 rounded-lg border border-zinc-700">
-      <table className="min-w-full text-xs">
+    <div className="overflow-x-auto my-3 rounded-lg border border-zinc-700/60 shadow-sm">
+      <table className="min-w-full text-xs border-collapse">
         <thead>
-          <tr className="bg-zinc-800/80">
-            {headers.map((h) => (
-              <th key={h} className="px-3 py-2 text-left text-zinc-300 font-semibold border-b border-zinc-700 capitalize">
+          <tr className="bg-zinc-800">
+            {headers.map((h, idx) => (
+              <th
+                key={h}
+                className={`px-4 py-2.5 font-semibold border-b border-zinc-600 whitespace-nowrap ${
+                  isNumericColumn(rows, h) ? "text-right" : "text-left"
+                } ${idx > 0 ? "border-l border-zinc-700" : ""} text-zinc-200`}
+              >
                 {h.replace(/_/g, " ")}
               </th>
             ))}
@@ -174,10 +188,22 @@ const DynamicTable = memo(function DynamicTable({ data }: { data: Record<string,
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className={i % 2 === 0 ? "bg-zinc-900/40" : "bg-zinc-900/20"}>
-              {headers.map((h) => (
-                <td key={h} className="px-3 py-2 text-zinc-300 border-b border-zinc-800">
-                  {formatCellValue(row[h])}
+            <tr
+              key={i}
+              className={`${
+                i % 2 === 0 ? "bg-zinc-900/50" : "bg-zinc-800/30"
+              } hover:bg-zinc-700/40 transition-colors`}
+            >
+              {headers.map((h, idx) => (
+                <td
+                  key={h}
+                  className={`px-4 py-2 border-b border-zinc-800/60 whitespace-nowrap ${
+                    isNumericColumn(rows, h)
+                      ? "text-right tabular-nums font-mono text-zinc-200"
+                      : "text-zinc-300"
+                  } ${idx > 0 ? "border-l border-zinc-800/60" : ""}`}
+                >
+                  {formatCellValue(row[h], h)}
                 </td>
               ))}
             </tr>
@@ -320,7 +346,13 @@ const MessageBubble = memo(function MessageBubble({ message, isUser, onFollowUp,
               {message.intermediateSteps && (
                 <IntermediateSteps steps={message.intermediateSteps} />
               )}
-              <MarkdownContent content={message.content} />
+              <MarkdownContent
+                content={
+                  message.table && message.table.length > 0
+                    ? message.content.replace(/\n*\|[^\n]+\|(\n\|[-:| ]+\|)?(\n\|[^\n]+\|)*/g, "").trim()
+                    : message.content
+                }
+              />
               {message.table && <DynamicTable data={message.table} />}
 
               <div className="flex flex-wrap items-center gap-2 mt-2">

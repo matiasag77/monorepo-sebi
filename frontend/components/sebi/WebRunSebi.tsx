@@ -302,7 +302,13 @@ function MessageBubble({
               {message.intermediateSteps && (
                 <IntermediateSteps steps={message.intermediateSteps} />
               )}
-              <MarkdownContent content={message.text} />
+              <MarkdownContent
+                content={
+                  message.tables && message.tables.length > 0
+                    ? message.text.replace(/\n*\|[^\n]+\|(\n\|[-:| ]+\|)?(\n\|[^\n]+\|)*/g, "").trim()
+                    : message.text
+                }
+              />
 
               {message.tables && message.tables.length > 0 && (
                 <DynamicTable data={message.tables} />

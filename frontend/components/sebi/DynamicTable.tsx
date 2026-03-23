@@ -16,9 +16,19 @@ function flattenTableData(data: unknown[]): Record<string, unknown>[] {
   return flat
 }
 
-function formatCellValue(value: unknown): string {
-  if (value === null || value === undefined) return ""
-  if (typeof value === "number") return value.toLocaleString()
+function isNumericColumn(rows: Record<string, unknown>[], header: string): boolean {
+  return rows.some((row) => typeof row[header] === "number")
+}
+
+function formatCellValue(value: unknown, header: string): string {
+  if (value === null || value === undefined) return "-"
+  if (typeof value === "number") {
+    // If header suggests percentage, format accordingly
+    if (header.toLowerCase().includes("%")) {
+      return `${value.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+    }
+    return value.toLocaleString("es-CL")
+  }
   if (Array.isArray(value)) return value.join(", ")
   return String(value)
 }
@@ -32,14 +42,16 @@ export default function DynamicTable({ data }: DynamicTableProps) {
   const headers = Object.keys(rows[0])
 
   return (
-    <div className="overflow-x-auto my-3 rounded-lg border border-zinc-700">
-      <table className="min-w-full text-xs">
+    <div className="overflow-x-auto my-3 rounded-lg border border-zinc-700/60 shadow-sm">
+      <table className="min-w-full text-xs border-collapse">
         <thead>
-          <tr className="bg-zinc-800/80">
-            {headers.map((h) => (
+          <tr className="bg-zinc-800">
+            {headers.map((h, idx) => (
               <th
                 key={h}
-                className="px-3 py-2 text-left text-zinc-300 font-semibold border-b border-zinc-700 capitalize"
+                className={`px-4 py-2.5 font-semibold border-b border-zinc-600 whitespace-nowrap ${
+                  isNumericColumn(rows, h) ? "text-right" : "text-left"
+                } ${idx > 0 ? "border-l border-zinc-700" : ""} text-zinc-200`}
               >
                 {h.replace(/_/g, " ")}
               </th>
@@ -50,14 +62,20 @@ export default function DynamicTable({ data }: DynamicTableProps) {
           {rows.map((row, i) => (
             <tr
               key={i}
-              className={i % 2 === 0 ? "bg-zinc-900/40" : "bg-zinc-900/20"}
+              className={`${
+                i % 2 === 0 ? "bg-zinc-900/50" : "bg-zinc-800/30"
+              } hover:bg-zinc-700/40 transition-colors`}
             >
-              {headers.map((h) => (
+              {headers.map((h, idx) => (
                 <td
                   key={h}
-                  className="px-3 py-2 text-zinc-300 border-b border-zinc-800"
+                  className={`px-4 py-2 border-b border-zinc-800/60 whitespace-nowrap ${
+                    isNumericColumn(rows, h)
+                      ? "text-right tabular-nums font-mono text-zinc-200"
+                      : "text-zinc-300"
+                  } ${idx > 0 ? "border-l border-zinc-800/60" : ""}`}
                 >
-                  {formatCellValue(row[h])}
+                  {formatCellValue(row[h], h)}
                 </td>
               ))}
             </tr>

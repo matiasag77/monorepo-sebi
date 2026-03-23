@@ -4,6 +4,7 @@ interface DynamicTableProps {
   data: Record<string, unknown>[]
 }
 
+
 function flattenTableData(data: unknown[]): Record<string, unknown>[] {
   const flat: Record<string, unknown>[] = []
   for (const item of data) {
@@ -62,20 +63,20 @@ export default function DynamicTable({ data }: DynamicTableProps) {
           {rows.map((row, i) => (
             <tr
               key={i}
-              className={`${
+                className={`${
                 i % 2 === 0 ? "bg-zinc-900/50" : "bg-zinc-800/30"
               } hover:bg-zinc-700/40 transition-colors`}
             >
-              {headers.map((h, idx) => (
+               {headers.map((h, idx) => (
                 <td
                   key={h}
-                  className={`px-4 py-2 border-b border-zinc-800/60 whitespace-nowrap ${
+                                   className={`px-4 py-2 border-b border-zinc-800/60 whitespace-nowrap ${
                     isNumericColumn(rows, h)
                       ? "text-right tabular-nums font-mono text-zinc-200"
                       : "text-zinc-300"
                   } ${idx > 0 ? "border-l border-zinc-800/60" : ""}`}
                 >
-                  {formatCellValue(row[h], h)}
+                     {formatCellValue(row[h], h)}
                 </td>
               ))}
             </tr>

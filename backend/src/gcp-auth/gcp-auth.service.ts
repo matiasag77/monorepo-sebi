@@ -240,7 +240,7 @@ export class GcpAuthService implements OnModuleInit {
           status: res.status,
           statusText: res.statusText,
           data,
-          headers: Object.fromEntries((res.headers as any).entries()),
+          headers: Object.fromEntries(res.headers.entries()),
         };
       } finally {
         if (timeoutId) clearTimeout(timeoutId);
@@ -321,7 +321,7 @@ export class GcpAuthService implements OnModuleInit {
         status: res.status,
         statusText: res.statusText,
         data,
-        headers: Object.fromEntries((res.headers as any).entries()),
+        headers: Object.fromEntries(res.headers.entries()),
       };
     } finally {
       if (timeoutId) clearTimeout(timeoutId);

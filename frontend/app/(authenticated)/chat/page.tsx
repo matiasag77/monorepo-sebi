@@ -163,14 +163,13 @@ function formatCellValue(value: unknown, header: string): string {
 
 const DynamicTable = memo(function DynamicTable({ data }: { data: Record<string, unknown>[] }) {
   if (!data || data.length === 0) return null
-
-  const rows = flattenTableData(data)
+    const rows = flattenTableData(data)
   if (rows.length === 0) return null
 
   const headers = Object.keys(rows[0])
 
   return (
-    <div className="overflow-x-auto my-3 rounded-lg border border-zinc-700/60 shadow-sm">
+   <div className="overflow-x-auto my-3 rounded-lg border border-zinc-700/60 shadow-sm">
       <table className="min-w-full text-xs border-collapse">
         <thead>
           <tr className="bg-zinc-800">
@@ -181,14 +180,14 @@ const DynamicTable = memo(function DynamicTable({ data }: { data: Record<string,
                   isNumericColumn(rows, h) ? "text-right" : "text-left"
                 } ${idx > 0 ? "border-l border-zinc-700" : ""} text-zinc-200`}
               >
-                {h.replace(/_/g, " ")}
+                 {h.replace(/_/g, " ")}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr
+                    <tr
               key={i}
               className={`${
                 i % 2 === 0 ? "bg-zinc-900/50" : "bg-zinc-800/30"
@@ -380,7 +379,7 @@ const MessageBubble = memo(function MessageBubble({ message, isUser, onFollowUp,
                 </div>
               )}
 
-              {message.isError && onRetry && (
+              {(message as Message & { isError?: boolean }).isError && onRetry && (
                 <div className="mt-3 pt-3 border-t border-zinc-700/50">
                   <button
                     onClick={onRetry}
@@ -499,10 +498,12 @@ function ChatPage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Load conversation from URL param
   const conversationIdParam = searchParams.get("id")
+
+  // Load conversation from URL param
   useEffect(() => {
-    if (conversationIdParam && conversationIdParam !== conversationId) {
+     if (conversationIdParam && conversationIdParam !== conversationId) 
+    {
       setLoadingConversation(true)
       setConversationId(conversationIdParam)
       api
@@ -606,7 +607,7 @@ function ChatPage() {
       }
       setMessages((prev) => [...prev, assistantMessage])
     } catch {
-      const errorMessage: Message = {
+      const errorMessage: Message & { isError: boolean } = {
         role: "assistant",
         content:
           "Ocurrió un error al procesar tu solicitud. Por favor, intenta de nuevo.",
@@ -697,7 +698,7 @@ function ChatPage() {
                   message={msg}
                   isUser={msg.role === "user"}
                   onFollowUp={(text) => handleSend(text)}
-                  onRetry={msg.isError ? () => {
+                  onRetry={(msg as Message & { isError?: boolean }).isError ? () => {
                     const lastUserMsg = [...messages].slice(0, i).reverse().find(m => m.role === "user")
                     if (lastUserMsg) {
                       setMessages((prev) => prev.filter((_, idx) => idx !== i))
@@ -792,7 +793,7 @@ function ChatPage() {
 
 export default function ChatPageWrapper() {
   return (
-    <Suspense>
+    <Suspense fallback={<div>Loading...</div>} >
       <ChatPage />
     </Suspense>
   )

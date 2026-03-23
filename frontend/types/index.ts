@@ -26,7 +26,6 @@ export interface Message {
   confidence?: number;
   sources?: string[];
   followUpQuestions?: string[];
-  isError?: boolean;
 }
 
 export interface Conversation {

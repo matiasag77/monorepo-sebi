@@ -122,8 +122,7 @@ export class ChatService {
             try {
               if (textContent.includes('{')) {
                 const parsed = JSON.parse(textContent);
-                // Accumulate tables from every block (ADK returns "tables" plural)
-                // ADK may return nested arrays: tables: [[{...}, {...}]] — flatten them
+                
                 for (const field of ['tables', 'table'] as const) {
                   if (parsed[field] && Array.isArray(parsed[field])) {
                     for (const item of parsed[field]) {
@@ -312,7 +311,7 @@ export class ChatService {
             try {
               if (textContent.includes('{')) {
                 const parsed = JSON.parse(textContent);
-                // Accumulate tables from every block (flatten nested arrays)
+                // Accumulate tables from every block
                 if (parsed.tables && Array.isArray(parsed.tables)) {
                   this.logger.log(`[SEBI] Tables found in block[${idx}]: ${parsed.tables.length} items`);
                   for (const item of parsed.tables) {
@@ -422,6 +421,8 @@ export class ChatService {
 
       this.logger.log(`[SEBI] ADK responded in ${Date.now() - fetchStart}ms — status=${res.status}`);
       this.logger.log(`[SEBI] ADK response size: ${res.data?.length ?? 0} bytes`);
+      this.logger.log(`[SEBI] ADK complete response:\n${JSON.stringify(res) ?? '(empty)'}`);
+      console.log(`[SEBI] ADK complete response:\n${JSON.stringify(res) ?? '(empty)'}`);
 
       if (res.status >= 400) {
         this.logger.error(`[SEBI] ADK error status=${res.status}, body: ${res.data?.substring(0, 500)}`);

@@ -61,10 +61,11 @@ export class ChatService {
     message: string,
     userId?: string,
     sessionId?: string,
+    email?: string,
   ): Promise<ChatResponse> {
     this.logger.log(`sendMessage called — userId=${userId}, sessionId=${sessionId}, len=${message?.length}`);
     const startTime = Date.now();
-    const result = await this.sendToAdk(message, userId, sessionId);
+    const result = await this.sendToAdk(message, userId, sessionId, email);
     this.logger.log(`sendMessage completed in ${Date.now() - startTime}ms`);
     return result;
   }
@@ -102,6 +103,7 @@ export class ChatService {
     this.logger.log(`parseAdkSseResponse — data lines: ${lines.length}`);
 
     let finalAnswerData: Record<string, unknown> = {};
+    const allTables: Record<string, unknown>[] = [];
     const intermediateActions: string[] = [];
 
     for (const jsonStr of lines) {
@@ -119,7 +121,15 @@ export class ChatService {
             const textContent: string = part.text;
             try {
               if (textContent.includes('{')) {
-                finalAnswerData = JSON.parse(textContent);
+                const parsed = JSON.parse(textContent);
+                // Accumulate tables from every block (ADK returns "tables" plural)
+                if (parsed.tables && Array.isArray(parsed.tables)) {
+                  allTables.push(...parsed.tables);
+                }
+                if (parsed.table && Array.isArray(parsed.table)) {
+                  allTables.push(...parsed.table);
+                }
+                finalAnswerData = parsed;
               }
             } catch {
               if (!finalAnswerData['answer']) {
@@ -140,7 +150,7 @@ export class ChatService {
     return {
       answer: (finalAnswerData['answer'] as string) ?? 'Procesamiento completado.',
       context: (finalAnswerData['context'] as string) ?? null,
-      table: (finalAnswerData['table'] as Record<string, unknown>[] | null) ?? null,
+      table: allTables.length > 0 ? allTables : null,
       chart: (finalAnswerData['chart'] as Record<string, unknown> | null) ?? null,
       proactivo: (finalAnswerData['proactivo'] as string) ?? null,
       intermediateSteps: intermediateActions.length > 0 ? intermediateActions : undefined,
@@ -186,6 +196,7 @@ export class ChatService {
     message: string,
     userId?: string,
     sessionId?: string,
+    email?: string,
   ): Promise<ChatResponse> {
     const effectiveUserId = userId ?? 'sebi-user';
     const effectiveSessionId = sessionId ?? `session-${Date.now()}`;
@@ -211,6 +222,11 @@ export class ChatService {
         session_id: effectiveSessionId,
         new_message: { role: 'user', parts: [{ text: message }] },
         streaming: false,
+        state: {
+          session_id: effectiveSessionId,
+          user_prompt: message,
+          user_email: email ?? '',
+        },
       };
 
       this.logger.log(`Sending to ADK — ${runUrl}`);

@@ -87,6 +87,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   session: {
     strategy: "jwt",
+    maxAge: 48 * 60 * 60, // 48 hours — debe coincidir con JWT_EXPIRATION del backend
   },
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   trustHost: true,

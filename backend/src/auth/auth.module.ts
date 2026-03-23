@@ -23,7 +23,7 @@ import { LocalStrategy } from './strategies/local.strategy';
           return secret;
         })(),
         signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRATION', '2h') as any,
+          expiresIn: configService.get<string>('JWT_EXPIRATION', '48h') as any,
         },
       }),
       inject: [ConfigService],

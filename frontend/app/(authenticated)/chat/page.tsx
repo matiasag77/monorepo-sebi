@@ -27,31 +27,32 @@ import type { Message, ChatSuggestion } from "@/types"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
-// --- Arrays de saludos y estados de espera ---
+// --- Mensajes de saludo inicial (se muestra uno aleatorio en el primer mensaje) ---
 const GREETING_MESSAGES = [
   "Hola buen día, enseguida te ayudo con lo solicitado.",
-  "¡Hola! Dame un momento, ya estoy trabajando en tu consulta.",
-  "¡Buen día! Déjame revisar eso para ti enseguida.",
+  "¡Hola! Dame un momento, estoy revisando tu consulta.",
+  "¡Buen día! Déjame buscar eso para ti enseguida.",
   "¡Hola! Con gusto te ayudo, dame unos segundos.",
-  "¡Qué tal! Ya estoy procesando tu solicitud.",
-  "¡Hola! Voy a buscar esa información para ti ahora mismo.",
-  "¡Buen día! Estoy en ello, un momento por favor.",
-  "¡Hola! Perfecto, déjame buscar lo que necesitas.",
-  "¡Hola! Entendido, estoy revisando tu consulta.",
+  "¡Hola! Ya estoy procesando tu solicitud.",
+  "¡Hola! Voy a buscar esa información para ti.",
+  "¡Buen día! Un momento por favor, estoy en ello.",
+  "¡Hola! Perfecto, déjame consultar lo que necesitas.",
+  "¡Hola! Entendido, estoy trabajando en tu consulta.",
   "¡Buen día! Ya estoy analizando lo que me pides.",
 ]
 
+// --- Mensajes de estado que rotan cada 6s mientras se espera respuesta ---
 const WAITING_STATUS_MESSAGES = [
-  "Trabajando...",
-  "Buscando información...",
-  "Encontrando datos...",
   "Analizando tu consulta...",
-  "Consultando las fuentes...",
+  "Buscando información relevante...",
+  "Consultando las fuentes de datos...",
   "Procesando la solicitud...",
-  "Revisando los datos...",
-  "Casi listo...",
+  "Revisando los datos disponibles...",
   "Recopilando resultados...",
-  "Preparando la respuesta...",
+  "Cruzando información...",
+  "Generando la respuesta...",
+  "Organizando los datos encontrados...",
+  "Preparando el resultado final...",
 ]
 
 function TypingIndicator({ statusMessage }: { statusMessage?: string }) {
@@ -381,7 +382,15 @@ const MessageBubble = memo(function MessageBubble({ message, isUser, onFollowUp,
                     : message.content
                 }
               />
-              {message.table && <DynamicTable data={message.table} />}
+              {message.table && message.table.length > 0 && (
+                Array.isArray(message.table[0]) ? (
+                  (message.table as Record<string, unknown>[][]).map((tableGroup, idx) => (
+                    <DynamicTable key={idx} data={tableGroup} />
+                  ))
+                ) : (
+                  <DynamicTable data={message.table as Record<string, unknown>[]} />
+                )
+              )}
 
               <div className="flex flex-wrap items-center gap-2 mt-2">
                 {message.confidence != null && message.confidence > 0 && message.confidence < 1 && (
@@ -667,11 +676,19 @@ function ChatPage() {
 
       const response = await api.sendMessage(currentConvId, text)
 
+      // Normalize tables: backend may send `tables` (array of arrays) or legacy `table` (flat array)
+      let normalizedTable: Record<string, unknown>[][] | null = null
+      if (response.tables && response.tables.length > 0) {
+        normalizedTable = response.tables
+      } else if (response.table && response.table.length > 0) {
+        normalizedTable = [response.table]
+      }
+
       const assistantMessage: Message = {
         role: "assistant",
         content: response.assistantMessage.content,
         timestamp: response.assistantMessage.timestamp,
-        table: response.table,
+        table: normalizedTable,
         chart: response.chart,
         proactivo: response.proactivo,
         context: response.context,

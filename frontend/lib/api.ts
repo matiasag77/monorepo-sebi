@@ -132,6 +132,7 @@ export async function deleteConversation(id: string): Promise<void> {
 export interface SendMessageResponse {
   assistantMessage: { content: string; timestamp: string; role: string }
   table?: Record<string, unknown>[] | null
+  tables?: Record<string, unknown>[][] | null
   chart?: Record<string, unknown> | null
   proactivo?: string | null
   context?: string | null

@@ -123,11 +123,17 @@ export class ChatService {
               if (textContent.includes('{')) {
                 const parsed = JSON.parse(textContent);
                 // Accumulate tables from every block (ADK returns "tables" plural)
-                if (parsed.tables && Array.isArray(parsed.tables)) {
-                  allTables.push(...parsed.tables);
-                }
-                if (parsed.table && Array.isArray(parsed.table)) {
-                  allTables.push(...parsed.table);
+                // ADK may return nested arrays: tables: [[{...}, {...}]] — flatten them
+                for (const field of ['tables', 'table'] as const) {
+                  if (parsed[field] && Array.isArray(parsed[field])) {
+                    for (const item of parsed[field]) {
+                      if (Array.isArray(item)) {
+                        allTables.push(...item);
+                      } else if (item && typeof item === 'object') {
+                        allTables.push(item);
+                      }
+                    }
+                  }
                 }
                 finalAnswerData = parsed;
               }
@@ -306,10 +312,16 @@ export class ChatService {
             try {
               if (textContent.includes('{')) {
                 const parsed = JSON.parse(textContent);
-                // Accumulate tables from every block
+                // Accumulate tables from every block (flatten nested arrays)
                 if (parsed.tables && Array.isArray(parsed.tables)) {
-                  this.logger.log(`[SEBI] Tables found in block[${idx}]: ${parsed.tables.length} rows`);
-                  allTables.push(...parsed.tables);
+                  this.logger.log(`[SEBI] Tables found in block[${idx}]: ${parsed.tables.length} items`);
+                  for (const item of parsed.tables) {
+                    if (Array.isArray(item)) {
+                      allTables.push(...item);
+                    } else if (item && typeof item === 'object') {
+                      allTables.push(item);
+                    }
+                  }
                 }
                 finalAnswerData = parsed;
               }

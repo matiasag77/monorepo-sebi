@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback, memo, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -28,7 +27,34 @@ import type { Message, ChatSuggestion } from "@/types"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
-function TypingIndicator() {
+// --- Arrays de saludos y estados de espera ---
+const GREETING_MESSAGES = [
+  "Hola buen día, enseguida te ayudo con lo solicitado.",
+  "¡Hola! Dame un momento, ya estoy trabajando en tu consulta.",
+  "¡Buen día! Déjame revisar eso para ti enseguida.",
+  "¡Hola! Con gusto te ayudo, dame unos segundos.",
+  "¡Qué tal! Ya estoy procesando tu solicitud.",
+  "¡Hola! Voy a buscar esa información para ti ahora mismo.",
+  "¡Buen día! Estoy en ello, un momento por favor.",
+  "¡Hola! Perfecto, déjame buscar lo que necesitas.",
+  "¡Hola! Entendido, estoy revisando tu consulta.",
+  "¡Buen día! Ya estoy analizando lo que me pides.",
+]
+
+const WAITING_STATUS_MESSAGES = [
+  "Trabajando...",
+  "Buscando información...",
+  "Encontrando datos...",
+  "Analizando tu consulta...",
+  "Consultando las fuentes...",
+  "Procesando la solicitud...",
+  "Revisando los datos...",
+  "Casi listo...",
+  "Recopilando resultados...",
+  "Preparando la respuesta...",
+]
+
+function TypingIndicator({ statusMessage }: { statusMessage?: string }) {
   return (
     <div className="flex items-start gap-3 animate-fade-in">
       <Avatar className="w-8 h-8 shrink-0 mt-1">
@@ -42,6 +68,9 @@ function TypingIndicator() {
           <div className="w-2 h-2 rounded-full bg-blue-400 typing-dot" />
           <div className="w-2 h-2 rounded-full bg-blue-400 typing-dot" />
         </div>
+        {statusMessage && (
+          <p className="text-xs text-zinc-400 mt-1.5 animate-fade-in">{statusMessage}</p>
+        )}
       </div>
     </div>
   )
@@ -494,8 +523,12 @@ function ChatPage() {
   const [loadingConversation, setLoadingConversation] = useState(false)
   const [showScrollDown, setShowScrollDown] = useState(false)
 
+  const [waitingStatus, setWaitingStatus] = useState("")
+  const [isFirstMessage, setIsFirstMessage] = useState(true)
+  const waitingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const scrollRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const conversationIdParam = searchParams.get("id")
@@ -506,6 +539,7 @@ function ChatPage() {
     {
       setLoadingConversation(true)
       setConversationId(conversationIdParam)
+      setIsFirstMessage(false)
       api
         .getConversation(conversationIdParam)
         .then((conv) => {
@@ -562,19 +596,62 @@ function ChatPage() {
     setShowScrollDown(!isNearBottom && messages.length > 0)
   }, [messages.length])
 
+  // Start cycling waiting status messages every 6 seconds
+  const startWaitingStatus = useCallback(() => {
+    let index = 0
+    setWaitingStatus(WAITING_STATUS_MESSAGES[0])
+    waitingIntervalRef.current = setInterval(() => {
+      index = (index + 1) % WAITING_STATUS_MESSAGES.length
+      setWaitingStatus(WAITING_STATUS_MESSAGES[index])
+    }, 6000)
+  }, [])
+
+  const stopWaitingStatus = useCallback(() => {
+    if (waitingIntervalRef.current) {
+      clearInterval(waitingIntervalRef.current)
+      waitingIntervalRef.current = null
+    }
+    setWaitingStatus("")
+  }, [])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (waitingIntervalRef.current) clearInterval(waitingIntervalRef.current)
+    }
+  }, [])
+
   const handleSend = async (messageText?: string) => {
     const text = (messageText || input).trim()
     if (!text || isLoading) return
 
     setInput("")
+    // Reset textarea height
+    if (inputRef.current) inputRef.current.style.height = "auto"
 
     const userMessage: Message = {
       role: "user",
       content: text,
       timestamp: new Date().toISOString(),
     }
-    setMessages((prev) => [...prev, userMessage])
+
+    // If it's the first message in the conversation, add a greeting
+    const shouldGreet = isFirstMessage && messages.length === 0
+    if (shouldGreet) {
+      const greeting = GREETING_MESSAGES[Math.floor(Math.random() * GREETING_MESSAGES.length)]
+      const greetingMessage: Message = {
+        role: "assistant",
+        content: greeting,
+        timestamp: new Date().toISOString(),
+      }
+      setMessages((prev) => [...prev, userMessage, greetingMessage])
+      setIsFirstMessage(false)
+    } else {
+      setMessages((prev) => [...prev, userMessage])
+    }
+
     setIsLoading(true)
+    startWaitingStatus()
 
     try {
       // Create conversation if none exists
@@ -616,6 +693,7 @@ function ChatPage() {
       }
       setMessages((prev) => [...prev, errorMessage])
     } finally {
+      stopWaitingStatus()
       setIsLoading(false)
       inputRef.current?.focus()
     }
@@ -634,14 +712,23 @@ function ChatPage() {
     setMessages([])
     setConversationId(null)
     setInput("")
+    setIsFirstMessage(true)
     router.replace("/chat", { scroll: false })
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value)
+    // Auto-resize textarea
+    const el = e.target
+    el.style.height = "auto"
+    el.style.height = Math.min(el.scrollHeight, 160) + "px"
   }
 
   const showWelcome = messages.length === 0 && !loadingConversation
@@ -707,7 +794,7 @@ function ChatPage() {
                   } : undefined}
                 />
               ))}
-              {isLoading && <TypingIndicator />}
+              {isLoading && <TypingIndicator statusMessage={waitingStatus} />}
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
@@ -753,16 +840,17 @@ function ChatPage() {
       {/* Input area */}
       <div className="border-t border-zinc-800/50 bg-background/80 backdrop-blur-sm p-4">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-center gap-2 p-1.5 rounded-xl glass-strong">
-            <Input
+          <div className="flex items-end gap-2 p-1.5 rounded-xl glass-strong">
+            <textarea
               ref={inputRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder="Escribe tu mensaje..."
-              className="flex-1 border-0 bg-transparent focus-visible:ring-0 text-white placeholder:text-zinc-500"
+              className="flex-1 border-0 bg-transparent focus-visible:outline-none focus-visible:ring-0 text-white placeholder:text-zinc-500 text-sm resize-none py-2 px-3 min-h-[36px] max-h-[160px] scrollbar-thin"
               disabled={isLoading}
               autoFocus
+              rows={1}
             />
             <Button
               onClick={() => handleSend()}

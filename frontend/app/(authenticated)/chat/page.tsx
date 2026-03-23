@@ -57,22 +57,24 @@ const WAITING_STATUS_MESSAGES = [
 
 function TypingIndicator({ statusMessage }: { statusMessage?: string }) {
   return (
-    <div className="flex items-start gap-3 animate-fade-in">
-      <Avatar className="w-8 h-8 shrink-0 mt-1">
-        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white text-xs">
-          <Bot className="w-4 h-4" />
-        </AvatarFallback>
-      </Avatar>
-      <div className="glass rounded-2xl rounded-tl-md px-4 py-3">
-        <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-blue-400 typing-dot" />
-          <div className="w-2 h-2 rounded-full bg-blue-400 typing-dot" />
-          <div className="w-2 h-2 rounded-full bg-blue-400 typing-dot" />
+    <div className="animate-fade-in">
+      <div className="flex items-start gap-3">
+        <Avatar className="w-8 h-8 shrink-0 mt-1">
+          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white text-xs">
+            <Bot className="w-4 h-4" />
+          </AvatarFallback>
+        </Avatar>
+        <div className="glass rounded-2xl rounded-tl-md px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-blue-400 typing-dot" />
+            <div className="w-2 h-2 rounded-full bg-blue-400 typing-dot" />
+            <div className="w-2 h-2 rounded-full bg-blue-400 typing-dot" />
+          </div>
         </div>
-        {statusMessage && (
-          <p className="text-xs text-zinc-400 mt-1.5 animate-fade-in">{statusMessage}</p>
-        )}
       </div>
+      {statusMessage && (
+        <p className="text-xs text-zinc-500 mt-2 ml-11 animate-fade-in">{statusMessage}</p>
+      )}
     </div>
   )
 }
@@ -864,10 +866,10 @@ function ChatPage() {
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder="Escribe tu mensaje..."
-              className="flex-1 border-0 bg-transparent focus-visible:outline-none focus-visible:ring-0 text-white placeholder:text-zinc-500 text-sm resize-none py-2 px-3 min-h-[36px] max-h-[160px] scrollbar-thin"
+              className="flex-1 border-0 bg-transparent focus-visible:outline-none focus-visible:ring-0 text-white placeholder:text-zinc-500 text-sm resize-none py-2 px-3 min-h-[44px] max-h-[160px] scrollbar-thin"
               disabled={isLoading}
               autoFocus
-              rows={1}
+              rows={2}
             />
             <Button
               onClick={() => handleSend()}

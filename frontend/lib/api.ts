@@ -40,6 +40,7 @@ async function request<T>(path: string, options: RequestInit = {}, retries = 2):
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
+    cache: "no-store" as RequestCache,
   })
 
   if (!res.ok) {

@@ -646,23 +646,23 @@ function ChatPage() {
       timestamp: new Date().toISOString(),
     }
 
-    // If it's the first message in the conversation, add a greeting
+    // If it's the first message in the conversation, add a greeting after a 6s delay
     const shouldGreet = isFirstMessage && messages.length === 0
+    setMessages((prev) => [...prev, userMessage])
+    setIsLoading(true)
+    startWaitingStatus()
+
     if (shouldGreet) {
+      setIsFirstMessage(false)
       const greeting = GREETING_MESSAGES[Math.floor(Math.random() * GREETING_MESSAGES.length)]
       const greetingMessage: Message = {
         role: "assistant",
         content: greeting,
         timestamp: new Date().toISOString(),
       }
-      setMessages((prev) => [...prev, userMessage, greetingMessage])
-      setIsFirstMessage(false)
-    } else {
-      setMessages((prev) => [...prev, userMessage])
+      await new Promise((resolve) => setTimeout(resolve, 6000))
+      setMessages((prev) => [...prev, greetingMessage])
     }
-
-    setIsLoading(true)
-    startWaitingStatus()
 
     try {
       // Create conversation if none exists

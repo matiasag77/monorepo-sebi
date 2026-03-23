@@ -490,7 +490,7 @@ export default function WebRunSebi({
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
               {messages.map((msg, i) => (
                 <MessageBubble
-                  key={`${msg.sentAt}-${i}`}
+                  key={msg.sentAt || `msg-${i}`}
                   message={msg}
                   onFollowUp={handleFollowUp}
                   onRetry={msg.isError ? () => {

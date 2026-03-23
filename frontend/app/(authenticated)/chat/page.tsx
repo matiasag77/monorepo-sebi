@@ -447,13 +447,13 @@ function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Load conversation from URL param
+  const conversationIdParam = searchParams.get("id")
   useEffect(() => {
-    const id = searchParams.get("id")
-    if (id && id !== conversationId) {
+    if (conversationIdParam && conversationIdParam !== conversationId) {
       setLoadingConversation(true)
-      setConversationId(id)
+      setConversationId(conversationIdParam)
       api
-        .getConversation(id)
+        .getConversation(conversationIdParam)
         .then((conv) => {
           setMessages(
             conv.messages.map((m) => ({
@@ -479,7 +479,7 @@ function ChatPage() {
         })
         .finally(() => setLoadingConversation(false))
     }
-  }, [searchParams, conversationId])
+  }, [conversationIdParam, conversationId])
 
   // Load suggestions only once the user is authenticated (token is ready)
   useEffect(() => {
@@ -640,7 +640,7 @@ function ChatPage() {
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
               {messages.map((msg, i) => (
                 <MessageBubble
-                  key={`${msg.timestamp}-${i}`}
+                  key={msg.timestamp || `msg-${i}`}
                   message={msg}
                   isUser={msg.role === "user"}
                   onFollowUp={(text) => handleSend(text)}
